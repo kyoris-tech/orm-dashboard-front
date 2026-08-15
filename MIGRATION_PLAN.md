@@ -4,6 +4,33 @@
 > (não Vue). A migração é **Vite SPA → Next.js 16 (App Router)**, mantendo
 > React, TypeScript e Tailwind, com backend em `orm-back-node` (NestJS + Prisma).
 
+## 1.1 Desempenho e dados (react-query + axios único)
+
+- **Um único axios por lado**: `lib/http/backend-client.ts` (server-only, fala
+  com o Nest) e `lib/http/client.ts` (browser, fala só com `/api/*` do
+  próprio Next). Nenhuma outra instância axios é criada — evita configuração
+  duplicada e interceptors divergentes.
+- **TanStack Query** é a única forma de buscar/cachear dados no client a
+  partir da Fase 2 (`features/*/hooks`). Nada de `useEffect` + `fetch` solto:
+  isso deduplica requisições concorrentes automaticamente, evita refetch
+  desnecessário (`staleTime`/`gcTime` configurados em
+  `lib/query/query-client.ts`) e cobre retry/erro de forma consistente.
+- **`lib/query/keys.ts`** centraliza as query keys — nunca montar array de key
+  inline num componente, para não gerar cache duplicado do mesmo dado.
+- **Mutations** (`useMutation`) sempre invalidam/atualizam a query key certa
+  via `queryClient` em vez de forçar refetch amplo.
+- **`useMemo`** para qualquer valor derivado que não seja trivial (filtragem,
+  ordenação, `columns` do TanStack Table, mensagens de erro computadas) —
+  evita recalcular em cada render. Componentes puramente apresentacionais em
+  `components/ui` usam `React.memo`.
+- **Sessão do usuário no Header não usa react-query**: o `RootLayout` (Server
+  Component) já lê o cookie e passa `user` como prop — zero requisição extra
+  no client só para mostrar nome/empresa. React Query fica reservado para
+  dados de verdade (resumes, métricas, tabelas) a partir da Fase 2.
+- **TanStack Table**: a partir da Fase 3, `columns` e `data` memoizados
+  (`useMemo`); paginação/filtragem client-side não deve recriar arrays a cada
+  render.
+
 ## 1. Convenções do projeto
 
 - **Idioma do código**: variáveis, funções, classes, tipos e parâmetros em
@@ -145,49 +172,221 @@ server-side com blacklist.
 - [x] `src/proxy.ts` — guarda de rota inicial (redireciona sem cookie de sessão).
 - [x] `npx eslint .` e `npx next build` passando sem erros.
 
-### Fase 1 — Fundação (design system + auth real)
-- [ ] `components/ui`: `Button`, `Input`, `PasswordInput`, `Card`, `Text`,
-      `Badge`, `ConfirmDialog`, `Modal`/`PortalModal`, `Toggle` — portados do
-      projeto antigo, tipados e sem duplicação entre features.
+### Fase 1 — Fundação (design system + auth real) ✅
+- [x] `components/ui`: `Button`, `Input`, `PasswordInput`, `Card`, `Text`,
+      `Badge`, `ConfirmDialog`, `ModalPortal`, `OrmLogo` — portados do projeto
+      antigo, tipados, memoizados (`React.memo`) e sem duplicação entre
+      features. `Toggle` genérico fica para a Fase 2, junto do `ImportToggle`
+      que o vai consumir (evita componente sem consumidor ainda).
       Mapeamento: `components/Button.tsx` → `components/ui/Button.tsx`, etc.
-- [ ] `components/layout`: `Header`, `Footer`, `PageContainer` (substituem o
-      que hoje está hardcoded em `App.tsx`).
-- [ ] `components/motion`: wrappers de `framer-motion` reutilizáveis
-      (`FadeIn`, etc.) para não duplicar animação em cada seção.
-- [ ] `app/api/auth/login/route.ts` + `app/api/auth/logout/route.ts`.
-- [ ] `lib/auth/session.ts` (já criado) usado pelos Route Handlers acima.
-- [ ] `features/auth`: `LoginForm`, hook `useSession` (client, lê dados do
-      usuário retornados no login, sem token).
-- [ ] `app/login/page.tsx`.
-- [ ] `app/(protected)/layout.tsx` — layout com Header/Footer para rotas
-      autenticadas (substitui `ProtectedRoute.tsx`, cobertura dupla com o
-      `proxy.ts`).
+- [x] `components/layout`: `Header`, `Footer`, `PageContainer`.
+- [x] `components/motion/FadeIn.tsx`: wrapper reutilizável de `framer-motion`.
+- [x] `@tanstack/react-query` instalado; `app/providers.tsx` com
+      `QueryClientProvider` (um único `QueryClient` por sessão de browser via
+      `useState`, `staleTime`/`gcTime`/`refetchOnWindowFocus` configurados) +
+      devtools em dev. `lib/query/keys.ts` como fábrica central de query keys.
+- [x] `lib/http/client.ts` — único axios client-side, aponta para `/api/*`,
+      interceptor 401 → redireciona para `/login`.
+- [x] `app/api/auth/login/route.ts` + `app/api/auth/logout/route.ts` (BFF:
+      chamam o Nest com `x-api-key` só no servidor, gravam cookies httpOnly).
+- [x] `lib/auth/session.ts` — cookie httpOnly do token **e** cookie httpOnly
+      com os dados seguros do usuário (nome/empresa/role), lido direto pelo
+      `RootLayout` (Server Component) sem custar requisição ao client.
+- [x] `features/auth`: `api.ts`, `hooks/use-login-mutation.ts` (React Query
+      `useMutation`), `hooks/use-logout-mutation.ts`, `LoginForm.tsx`.
+- [x] `app/login/page.tsx`.
+- [x] `app/(protected)/layout.tsx` + placeholders `home/page.tsx` e
+      `metrics/page.tsx` (conteúdo real nas Fases 2 e 4) — cobertura dupla
+      com o `proxy.ts`.
+- [x] `npx eslint .` e `npx next build` sem erros; fluxo `/` → redirect
+      `/login` testado no browser (proxy funcionando, zero erro de console).
 
-### Fase 2 — Home / Import
-- [ ] `app/api/resumes/upload/route.ts`, `app/api/resumes/recent/route.ts`
-      (proxy para o Nest com o token do cookie).
-- [ ] `features/resumes`: `UploadArea`, `RecentImports`, `ImportToggle`.
-- [ ] `app/(protected)/home/page.tsx`.
+### Fase 2 — Home / Import ✅
+- [x] Route Handlers (BFF, token lido do cookie httpOnly server-side):
+      `app/api/resumes/recent`, `app/api/resumes/[id]` (DELETE),
+      `app/api/resumes/[id]/pdf` (stream binário via `fetch`),
+      `app/api/resumes/upload/bulk/start` (multipart via `fetch`, sem axios —
+      evita as limitações do adapter Node do axios com `FormData` web),
+      `app/api/resumes/upload/bulk/status/[jobId]`.
+- [x] `components/ui/SegmentedControl.tsx` — primitivo genérico extraído do
+      antigo `ImportToggle`; `features/resumes/components/ImportToggle.tsx`
+      agora é só configuração (opções) em cima dele.
+- [x] `features/resumes`: `UploadArea`, `RecentImports`, `ResumeCard`
+      (memoizado, recebe callbacks via `useCallback` do pai), `ResumeModal`.
+- [x] `useBulkUploadMutation` — upload em lote **sem `setInterval`**: uma
+      única `useMutation` cujo `mutationFn` inicia o job e faz polling via
+      `await` recursivo (intervalo só continua enquanto a mutation está viva,
+      cancelamento explícito via `cancelledRef`, progresso exposto por
+      `setState` chamado diretamente no fluxo assíncrono — não em efeito).
+      Zero listener/interval pendurado, zero requisição perdida.
+- [x] `app/(protected)/home/page.tsx` (Server, `metadata`) +
+      `home-view.tsx` (Client, estado das abas) — separação necessária
+      porque Client Components não exportam `metadata`.
+- [x] Assets estáticos portados para `public/` (`whatsapp.svg`, `loader.gif`).
+- [x] `lib/utils/phone.ts`, `lib/utils/date.ts` portados de `helpers/*`.
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] **Testado ponta a ponta no browser contra o `orm-back-node` real**:
+      login → `/home` → `RecentImports` carrega dados reais da API →
+      `ResumeModal` abre com os dados completos do currículo → Header exibe
+      nome/empresa via cookie (zero requisição extra) → logout. Nenhum erro
+      de console em nenhuma etapa.
 
-### Fase 3 — Analyze
-- [ ] `app/api/resumes/route.ts` (list/search com filtros).
-- [ ] `features/resumes`: `AnalyzeSection`, `CandidateTable/*`, `FiltersBar/*`.
-- [ ] `components/ui` de tabela reutilizáveis (`Table`, `TableHeader`,
-      `TablePagination`, `TableRow`) — genéricos o bastante para Metrics
-      reaproveitar depois.
+### Fase 3 — Analyze ✅
+- [x] `app/api/resumes/route.ts` (GET, repassa querystring + Bearer para o
+      Nest, que já faz o ranking de compatibilidade e paginação).
+- [x] **`@tanstack/react-table` fixado em `8.21.3`** (`--save-exact`): o
+      `npm install` sem versão do início da Fase 0 trouxe a `9.1.2`, que tem
+      uma API completamente diferente (`useTable` + sistema de features
+      composable, sem `useReactTable`/`getCoreRowModel`/`getSortedRowModel`
+      como imports diretos). Como o `decifracv-web-mvp` usa `8.21.3` e é
+      essa a API estável documentada, fixei a mesma major/minor/patch em vez
+      de reescrever tudo em cima da v9 — evita migrar para uma API ainda não
+      validada em produção por ninguém do time.
+- [x] `components/ui/DataTable.tsx` e `components/ui/Pagination.tsx` —
+      genéricos (`<TData>`), reaproveitáveis por qualquer tabela futura
+      (Métricas, Processos, Vagas), sem nada de `resumes` neles.
+- [x] `components/ui/SearchInput.tsx` — promovido de dentro do antigo
+      `FiltersBar/SearchInput.tsx` para componente de UI genérico.
+- [x] `features/resumes`: `CandidateTable` (colunas com `useMemo`, dados
+      mapeados com `useMemo`), `AnalyzeSection` (estado de filtros
+      draft/applied + busca com `useDebouncedValue`), `FiltersBar`,
+      `FilterButton` — `FilterButton` ficou **totalmente controlado**
+      (recebe `isApplied` do pai em vez de guardar esse booleano em estado
+      local + `useEffect` sincronizando, que era o padrão do componente
+      original e o mesmo anti-padrão corrigido na Fase 2).
+- [x] `useDeleteResumeMutation` agora invalida `queryKeys.resumes.all`
+      (prefixo) em vez de só `recent()` — a mesma mutation de exclusão é
+      reusada por `RecentImports` (Home) e `CandidateTable` (Analyze), e
+      invalidar pelo prefixo garante que as duas telas ficam consistentes
+      sem duplicar lógica.
+- [x] `placeholderData: keepPreviousData` na query de busca — troca de
+      página/filtro não pisca a tabela para o estado de loading.
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] **Testado no browser contra o `orm-back-node` real** (aba nova, log de
+      console limpo): aba "Analisar Candidatos" busca `/resumes` de verdade
+      e renderiza compatibilidade, nome, escolaridade, cargo e localidade
+      calculados pelo backend.
 
-### Fase 4 — Metrics
-- [ ] `app/(protected)/metrics/page.tsx`.
-- [ ] Reaproveitar componentes de tabela/card/badge da Fase 3.
+### Fase 4 — Métricas ✅ (feature nova, não migração)
+- ⚠️ **Não havia nada para migrar**: `MetricsPage.tsx` no
+      `decifracv-web-mvp` era um stub (`<>Metrics</>`) e o `orm-back-node`
+      não tem nenhum endpoint de métricas. Decisão do usuário: construir um
+      dashboard novo agora, calculado no frontend a partir de `GET
+      /resumes`, em vez de esperar um endpoint dedicado.
+- [x] `components/ui/StatCard.tsx`, `BarList.tsx`, `DailyBarChart.tsx` —
+      genéricos, sem lógica de `resumes`, reaproveitáveis por qualquer outro
+      dashboard futuro.
+- [x] `features/metrics/compute-metrics.ts` — função pura
+      (`computeMetrics(resumes) => MetricsSummary`), sem React, fácil de
+      testar isoladamente: total de currículos, confiança média de extração,
+      tempo médio de processamento, importações por dia (14 dias), top 8
+      habilidades, distribuição de escolaridade.
+- [x] `features/metrics/api.ts` **reaproveita** `searchResumes` de
+      `features/resumes/api.ts` (pede `pageSize=500` numa chamada só) em vez
+      de duplicar lógica de fetch.
+- [x] `useResumesMetricsQuery` usa `select: computeMetrics` do React Query —
+      o cálculo só reroda quando os dados brutos mudam de referência, não a
+      cada render.
+- [x] `app/(protected)/metrics/page.tsx` (Server, `metadata`) renderizando
+      `MetricsView` (Client) direto — aqui não precisou do split
+      page/`*-view.tsx` da Home, porque a página em si não tem estado.
+- [x] **Decisão consciente**: não usei o campo `compatibility` do backend
+      nas métricas — sem filtros de busca ele sempre retorna `100`
+      (`calculateMatchScore` do Nest devolve 100 quando não há critério
+      nenhum aplicado), então seria um número enganoso numa agregação.
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] **Testado no browser contra o `orm-back-node` real** (aba nova, console
+      limpo): dashboard populado com os dados reais do banco.
+- [x] ⚠️ **Achado durante o teste, não é bug do frontend**: o tempo médio de
+      processamento aparecia como `0s` porque `processingMs` era calculado
+      *antes* do processamento no backend. **Corrigido** em
+      [`upload.service.ts`](../orm-back-node/src/resumes/upload/upload.service.ts)
+      — o cálculo de `processingMs` foi movido para depois do
+      `extractText`/`analyseResume`, logo antes do `prisma.resume.create`.
+      `npx tsc --noEmit` do `orm-back-node` passa sem erros. **Requer restart
+      do `orm-back-node`** para o Nest recarregar o serviço (se não estiver
+      em `start:dev`/watch mode).
 
-### Fase 5 — Ações administrativas e polimento
-- [ ] `app/api/resumes/[id]/route.ts` (soft delete), `.../restore`,
-      `.../pdf`, `/admin/[id]/permanent` (guardado por role `admin`).
-- [ ] Revisar `metadata` por página, remover `vercel.json` (rewrite de SPA
-      não se aplica ao Next).
-- [ ] Teste ponta a ponta: login → upload → analyze → metrics → logout.
-- [ ] Portar `helpers/match.ts` e `helpers/maskPhone.ts` para
-      `lib/utils/match.ts` e `lib/utils/phone.ts` (sem comentários, inglês).
+### Fase 4.1 — Evolução: gráficos de verdade + escopo por empresa
+- [x] `@tanstack/react-table` fixado; agora **`recharts` instalado** para os
+      gráficos — segui o skill de dataviz do projeto antes de desenhar:
+      forma pela função dos dados (tendência no tempo → área; ranking de
+      magnitude → barra horizontal), **uma única cor sequencial** (o azul
+      `--color-accent` já usado no design system) em vez de paleta
+      categórica — não há múltiplas séries em nenhum gráfico daqui, então a
+      checagem de distinção CVD entre cores não se aplica.
+- [x] `components/ui/charts/ImportsTimelineChart.tsx` — `AreaChart` com
+      wash de ~15%→0% (baseline), linha 2px, grid hairline só horizontal,
+      tooltip com crosshair, eixo Y com ticks inteiros.
+- [x] `components/ui/charts/RankedBarChart.tsx` — barra horizontal, extremidade
+      arredondada 4px no lado do valor (`radius={[0,4,4,0]}`), espessura
+      máxima 20px (dentro do limite de 24px do spec), tooltip por barra.
+      Substituiu `DailyBarChart.tsx`/`BarList.tsx` (removidos, sem uso
+      restante).
+- [x] **Escopo por empresa**: `app/api/resumes/metrics/route.ts` (novo Route
+      Handler dedicado) busca `/resumes` no Nest e filtra o resultado por
+      `resume.company.id === sessionUser.companyId` antes de devolver ao
+      client — funciona mesmo para role `admin`, que no backend enxerga
+      currículos de todas as empresas (`findAllWithCompatibility` só
+      restringe por `companyId` para não-admin). `features/metrics/api.ts`
+      passou a chamar esse endpoint em vez de `searchResumes` genérico.
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] **Testado no browser** (aba nova, console limpo): gráficos renderizam
+      com dados reais, eixos com ticks, tooltip funcional.
+
+### Fase 5 — Ações administrativas e polimento ✅
+- [x] `app/api/resumes/[id]/restore/route.ts` (PATCH) e
+      `app/api/resumes/admin/[id]/permanent/route.ts` (DELETE) — só
+      encaminham o Bearer token; a checagem de role `admin` continua sendo
+      feita pelo Nest (`RolesGuard`), o Next não duplica essa regra.
+- [x] **`src/context/SessionProvider.tsx`** — Context novo (só agora fez
+      sentido criar): expõe `useSessionUser()` para componentes profundos
+      (`RecentImports`, `CandidateTable`) decidirem, sem prop-drilling, se
+      mostram a ação de exclusão permanente (`role === 'admin'`).
+- [x] **Exclusão suave vira "desfazer" em vez de confirmação prévia**:
+      `useUndoableDelete` (soft delete + toast com "Desfazer" por 6s,
+      chamando `restore` se clicado) substitui o `ConfirmDialog` que existia
+      antes de cada soft delete — decisão consciente: como a ação já é
+      reversível por 6s, um modal de confirmação antes é fricção redundante.
+      A exclusão **permanente** continua atrás de `ConfirmDialog` (tone
+      `danger`), por ser irreversível de verdade.
+- [x] `components/ui/Toast.tsx` — genérico, reaproveitado por
+      `RecentImports` e `CandidateTable`.
+- [x] 🐛 **Bug pego no teste manual, corrigido antes de fechar a fase**: o
+      `Toast` de undo nunca aparecia quando a lista de currículos ficava
+      vazia após a exclusão, porque `RecentImports` tinha `return` antecipado
+      para loading/erro/vazio *antes* do bloco que renderizava o `Toast` e o
+      `ConfirmDialog` de exclusão permanente. Corrigido extraindo o conteúdo
+      condicional para uma função interna (`renderContent()`) e deixando
+      `Toast`/`ConfirmDialog`/`ResumeModal` sempre montados no retorno
+      principal do componente.
+- [x] `vercel.json` — **nada a remover**: o `create-next-app` nunca criou um
+      (era específico do `vercel.json` de SPA do `decifracv-web-mvp`).
+- [x] `metadata` por página — já revisado nas fases anteriores (`Entrar ·
+      Orm`, `Início · Orm`, `Métricas · Orm`); nada pendente.
+- [x] **`helpers/match.ts` (`calculateMatch`) — decisão consciente de não
+      portar**: função já estava morta no `decifracv-web-mvp` (nenhum import
+      em nenhum lugar do próprio projeto de origem). Não faz sentido migrar
+      código morto para o Next; se a busca por compatibilidade de skills via
+      texto livre virar necessidade real, reavaliar então.
+      `helpers/maskPhone.ts` já tinha sido portado na Fase 2
+      (`lib/utils/phone.ts`).
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] **Teste ponta a ponta completo no browser** (aba nova, console limpo
+      em todas as etapas): login → `/home` → soft delete → toast "Desfazer"
+      → clique em Desfazer → currículo volta → `/metrics` (escopado por
+      empresa, 3 currículos) → `Analisar Candidatos` → confirmação de
+      exclusão permanente abre e cancela corretamente → logout → volta para
+      `/login`.
+
+**Pendência que ficou fora do escopo, documentada e não escondida:** não
+existe endpoint no backend para *listar* currículos com `deletedAt`
+preenchido. Isso significa que, passada a janela de 6s do toast de undo (ou
+se o usuário navegar/recarregar a página), não há como restaurar um
+currículo pela UI — só via acesso direto ao banco. Se isso virar um problema
+real de uso, a solução é um endpoint `GET /resumes?trashed=true` no
+`orm-back-node` mais uma tela de "Lixeira", análoga ao que fizemos aqui para
+Métricas.
 
 ---
 
