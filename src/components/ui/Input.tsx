@@ -1,16 +1,17 @@
 import { forwardRef, memo } from 'react';
-import { User } from 'lucide-react';
+import { User, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
+  icon?: LucideIcon;
 }
 
-function InputComponent({ label, className, ...props }: InputProps, ref: React.Ref<HTMLInputElement>) {
+function InputComponent({ label, icon: Icon = User, className, ...props }: InputProps, ref: React.Ref<HTMLInputElement>) {
   return (
     <div className="flex flex-col w-full">
       <div className="relative">
-        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4" />
+        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-4 h-4" />
         <input
           {...props}
           ref={ref}

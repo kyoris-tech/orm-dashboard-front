@@ -495,3 +495,225 @@ Camadas: **domain** (`types/`) → **infra** (`lib/http`, `lib/auth`) →
 - `middleware.js` foi renomeado para `proxy.js`/`proxy.ts` no Next 16 — já
   usamos o nome novo desde o início.
 - Vercel: remover `vercel.json` (rewrite de SPA não se aplica a projeto Next).
+
+---
+
+## 10. Fase 6 — Pós-migração: correções e feature nova (Processos Seletivos)
+
+Trabalho feito depois de fechar as 5 fases originais, a pedido do usuário.
+
+### 10.1 Fix: reload no erro de login
+- 🐛 **Bug real**: ao errar a senha, a página parecia "recarregar" e a
+  mensagem de erro nunca aparecia. Causa: `lib/http/client.ts` tinha um
+  interceptor global que trata **qualquer** 401 como sessão expirada e faz
+  `window.location.href = '/login'`. Como login inválido também responde 401
+  (repassado pela nossa própria rota `/api/auth/login`), o interceptor
+  disparava um reload completo antes da UI conseguir mostrar o erro.
+- **Fix**: o interceptor agora ignora esse redirecionamento quando a
+  requisição é para `/auth/*` — 401 de login/logout é resultado esperado
+  (credencial errada), não sessão expirada, e deve virar estado de erro
+  tratado pelo componente (`useLoginMutation`), não um reload forçado.
+
+### 10.2 `cursor-pointer` em todos os botões
+- Tailwind Preflight zera o `cursor` de `<button>` para `default` — por isso
+  nenhum botão (incluindo o menu pílula `SegmentedControl`) mostrava a mãozinha.
+  Resolvido globalmente em `app/globals.css` (`button:not(:disabled) { cursor:
+  pointer }` / `button:disabled { cursor: not-allowed }`) em vez de editar
+  className em cada um dos ~10 arquivos com `<button>` — mais robusto e cobre
+  qualquer botão novo automaticamente.
+
+### 10.3 Feature nova: Processos Seletivos
+Não é migração — o `decifracv-web-mvp` não tinha nada parecido. Escopo:
+seleção múltipla de candidatos em `CandidateTable`, botão "Abrir Processo
+Seletivo", aba "Processos Seletivos" com tabela de processos, clique na linha
+abre os candidatos daquele processo num drawer lateral.
+
+**Backend (`orm-back-node`)**:
+- [x] `prisma/schema.prisma`: modelos novos `SelectionProcess` (nome, status
+      `OPEN`/`CLOSED`, `companyId`, `createdById`) e `SelectionProcessCandidate`
+      (join table `selectionProcessId` + `resumeId`, `@@unique` para evitar
+      duplicata). Migração `add_selection_process` aplicada
+      (`npx prisma migrate dev`) e `npx prisma generate` rodado.
+- [x] `src/selection-process/` — módulo Nest no mesmo padrão de `company`/
+      `resumes`: `POST /api/v1/selection-processes` (cria processo com os
+      currículos selecionados, validando que cada `resumeId` pertence à
+      empresa do usuário logado — filtro por `companyId` do JWT, igual o
+      resto da API), `GET /api/v1/selection-processes` (lista da empresa,
+      com contagem de candidatos), `GET /api/v1/selection-processes/:id`
+      (detalhe com candidatos). **Escopado por empresa automaticamente**
+      porque toda query já filtra por `user.companyId` do token — não
+      depende de o frontend filtrar depois, ao contrário do `/resumes` que
+      só restringe para não-admin.
+- [x] `npx tsc --noEmit`, `npx nest build` sem erros; testado com o servidor
+      rodando de verdade (via `orm-dashboard-front`).
+
+**Frontend (`orm-dashboard-front`)**:
+- [x] `components/ui/Checkbox.tsx`, `components/ui/Drawer.tsx` — genéricos,
+      novos porque essa é a primeira feature que precisa de seleção múltipla
+      e painel lateral.
+- [x] `components/ui/Input.tsx` ganhou prop `icon` opcional (default mantém
+      o ícone de usuário existente) — reaproveitado pelo diálogo de criação
+      de processo em vez de duplicar o componente.
+- [x] `types/selection-process.ts`, `app/api/selection-processes/route.ts`
+      (GET/POST) e `.../[id]/route.ts` (GET) — mesmo padrão BFF do resto.
+- [x] `features/selection-processes/`: `api.ts`, hooks (`useSelectionProcessesQuery`,
+      `useSelectionProcessQuery`, `useCreateSelectionProcessMutation`),
+      `CreateSelectionProcessDialog`, `SelectionProcessesTable` (reaproveita
+      `DataTable`/`Badge`), `SelectionProcessDrawer` (reaproveita `Drawer` e
+      **o `ResumeModal` já existente** — clicar num candidato do drawer abre
+      o mesmo modal de detalhe usado em Home/Analyze).
+- [x] `CandidateTable`: coluna de checkbox (seleção via `RowSelectionState`
+      do TanStack Table, `getRowId` fixo no `resume.id` para a seleção
+      sobreviver a troca de página/filtro), barra "Abrir Processo Seletivo"
+      (desabilitada com 0 selecionados), abre `CreateSelectionProcessDialog`,
+      e ao criar com sucesso limpa a seleção e chama `onSelectionProcessCreated`
+      — prop opcional que a página usa para trocar a aba automaticamente
+      para "Processos Seletivos".
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] **Testado ponta a ponta no browser** contra o backend real: selecionar
+      2 candidatos → botão habilita e mostra contagem → criar processo →
+      troca de aba automática → tabela mostra o processo com a contagem
+      certa → clique na linha abre o drawer com os 2 candidatos e as datas
+      de adição. Zero erros de console em todas as etapas.
+
+**Fora do escopo por ora** (não pedido, não implementado): fechar processo
+(`status: CLOSED`), remover candidato de um processo, editar nome do
+processo. Se vira necessidade, o padrão dos outros CRUDs do projeto já está
+estabelecido para estender rápido.
+
+### 10.4 Cancelar processo seletivo + polimento do botão "Abrir Processo Seletivo"
+
+**Backend**:
+- [x] `SelectionProcessService.cancel(id, user)` — escopado por `companyId`,
+      idempotente (`BadRequestException` se já `CLOSED`), atualiza `status`
+      para `CLOSED`. `PATCH /api/v1/selection-processes/:id/cancel`.
+
+**Frontend**:
+- [x] `app/api/selection-processes/[id]/cancel/route.ts` (BFF), `api.ts` +
+      `useCancelSelectionProcessMutation` (invalida a lista em `onSettled`,
+      não só `onSuccess` — se o cancelamento falhar porque o processo já foi
+      cancelado em outra aba/sessão, o cache local se realinha com o
+      servidor de qualquer forma).
+- [x] `SelectionProcessDrawer`: botão "Cancelar processo seletivo" (só
+      aparece quando `status === 'OPEN'`) → `ConfirmDialog` (`tone="danger"`)
+      → em erro, a própria mensagem do `ConfirmDialog` mostra o erro do
+      backend em vez do texto de confirmação padrão.
+- [x] **Fix real no `components/ui/Button.tsx`**: o estado desabilitado não
+      ficava visualmente diferente do habilitado quando o botão usava
+      `className="!bg-accent"` (`!important` sempre vencia, não importa o
+      estado). Corrigido adicionando `variant` (`'primary' | 'accent'`) ao
+      `Button` — o desabilitado agora tem tratamento visual próprio
+      (`bg-border text-muted opacity-70`) que nenhum variant consegue
+      sobrescrever sem querer, porque `text-white`/`text-muted` deixaram de
+      coexistir na mesma string de classes (o projeto não usa
+      `tailwind-merge`, então classes conflitantes de mesma especificidade
+      já causaram problema 2x nesta sessão — vale considerar adicionar
+      `tailwind-merge` como dependência se aparecer uma terceira vez).
+- [x] Botão "Abrir Processo Seletivo" (`CandidateTable`): fonte menor
+      (`text-sm`, ícone 16px em vez de 18px), padding reduzido (`!py-2
+      !px-4` em vez do `py-3`/`px-6` padrão), usando `variant="accent"` em
+      vez de `!bg-accent` cru.
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] **Testado no browser**: seleção → botão habilita → criar processo →
+      cancelar processo pelo drawer → badge muda para "Cancelado" → tentar
+      cancelar de novo retorna erro 400 do backend e a mensagem aparece no
+      próprio diálogo. Confirmação visual da cor do botão precisou de um
+      passo extra (ver nota abaixo) porque a aba de teste automatizada não
+      compõe frames — não é um problema real do app.
+
+> **Nota sobre o teste desta sessão**: a aba do browser usada para testar
+> não estava sendo renderizada visualmente (erro "Browser pane is not
+> displayed" ao tentar tirar screenshot), o que faz o Chrome congelar
+> `transition`s CSS no valor inicial quando consultadas via
+> `getComputedStyle` — o botão parecia sempre cinza mesmo habilitado. Só foi
+> possível confirmar que a cor certa (`bg-accent`/branco/opacidade 1) é
+> aplicada forçando `transition: none` no elemento via JS. Isso é uma
+> limitação do ambiente de teste, não do código; num navegador normal a
+> transição de ~150ms resolve sozinha.
+
+### 10.5 Vagas Publicadas + vínculo com Processo Seletivo
+
+Campos do formulário de vaga baseados no painel "Informações da Vaga" do
+`orm-front-candidate` ([src/pages/Home.tsx](../orm-front-candidate/src/pages/Home.tsx))
+— título, modelo, requisitos, diferenciais, faixa salarial, tipo de
+contrato (empresa vem do usuário logado, não é campo do form).
+
+**Backend**:
+- [x] `prisma/schema.prisma`: modelo `JobOpening` (título, `WorkModel`
+      enum, `ContractType` enum, `salaryRange` opcional, `requirements`/
+      `differentials` como `String[]` nativo do Postgres — sem tabela
+      separada, mais simples que o padrão join-table usado em
+      `SelectionProcessCandidate` porque aqui não precisa de metadata por
+      item), `status` (`OPEN`/`CLOSED`). `SelectionProcess` ganhou
+      `jobOpeningId` opcional + relação. Migração `add_job_opening`
+      aplicada.
+- [x] `src/job-opening/` — módulo Nest (`POST`/`GET /api/v1/job-openings`),
+      escopado por `companyId`, mesmo padrão dos outros módulos.
+- [x] `SelectionProcessService`: `create()` aceita `jobOpeningId` opcional
+      (valida que a vaga pertence à empresa antes de vincular);
+      `linkJobOpening(id, dto, user)` novo — `PATCH
+      /api/v1/selection-processes/:id/job-opening`, valida processo E vaga
+      pertencem à empresa do usuário.
+- [x] `npx tsc --noEmit`, `npx nest build` sem erros.
+
+**Frontend**:
+- [x] `components/ui/Select.tsx`, `components/ui/TagListInput.tsx` —
+      genéricos novos (select estilizado + lista de tags editável,
+      reaproveitada para "Requisitos" e "Diferenciais" no mesmo form).
+- [x] `features/job-openings/`: `api.ts`, `labels.ts` (mapas PT-BR pros
+      enums), hooks, `CreateJobOpeningDialog` (form completo), `JobOpeningsTable`
+      (`DataTable` genérico), `JobOpeningsView` (botão "Adicionar Vaga" +
+      tabela) — pluga na aba "Vagas Publicadas" do `home-view.tsx`.
+- [x] `JobOpeningPicker` — combo reaproveitado em **dois** lugares: no
+      `CreateSelectionProcessDialog` (vincular vaga ao abrir um processo
+      novo) e no `LinkJobOpeningDialog` novo (vincular/alterar vaga num
+      processo já aberto, acionado pelo `SelectionProcessDrawer`).
+- [x] `SelectionProcessesTable` e `SelectionProcessDrawer` mostram a vaga
+      vinculada (coluna "Vaga" / botão "Vincular vaga" ou "Alterar vaga").
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] 🐛 **Bug pego no teste manual, corrigido**: `LinkJobOpeningDialog` (e
+      também `CreateSelectionProcessDialog`) inicializavam o estado do form
+      com `useState(valorInicial)` — como o `AnimatePresence` mantém o
+      componente montado entre aberturas (só anima a saída, não desmonta),
+      o `useState` só roda uma vez pra sempre, então reabrir "Alterar vaga"
+      num processo que já tinha vaga vinculada mostrava "Nenhuma vaga
+      vinculada" em vez da vaga atual. Corrigido com o padrão do próprio
+      React docs pra "ajustar estado quando uma prop muda" (comparar
+      `isOpen` com um `wasOpen` guardado em state, resetar durante o
+      render) — **não** um `useEffect`, que o lint do projeto já rejeitou
+      duas vezes nesta sessão pelo mesmo motivo (cascata de render).
+- [x] **Testado no browser** (JS-driven, não coordenadas — ver nota da
+      Fase 10.4 sobre a aba de teste não compor frames): vaga criada com
+      requisitos/diferenciais → aparece na tabela → processo seletivo novo
+      criado já vinculado à vaga (aparece na coluna "Vaga" da tabela de
+      processos) → "Alterar vaga" no drawer abre com a vaga atual
+      corretamente pré-selecionada. Zero erros de console em todas as
+      etapas.
+
+### 10.6 Drawer de detalhes da vaga (clicar na vaga publicada)
+
+Mesmo padrão do `SelectionProcessDrawer`: clicar na linha da tabela abre um
+`Drawer` lateral com os detalhes completos e os processos vinculados.
+
+**Backend**:
+- [x] `JobOpeningService.findOne(id, user)` — escopado por `companyId`,
+      inclui `selectionProcesses` (com `_count.candidates`). `GET
+      /api/v1/job-openings/:id`.
+
+**Frontend**:
+- [x] `JobOpeningDetail` (tipo), `getJobOpening` (`api.ts`),
+      `useJobOpeningQuery`, `app/api/job-openings/[id]/route.ts` (BFF) —
+      mesmo padrão dos outros detalhes.
+- [x] `JobOpeningDrawer` — reaproveita `Drawer`, `Badge` (requisitos e
+      diferenciais viram badges, não só texto solto) e, principal reuso:
+      **o próprio `SelectionProcessDrawer` já existente** — clicar num
+      processo vinculado dentro do drawer da vaga abre o drawer do processo
+      empilhado por cima (mesmo padrão que abrir `ResumeModal` de dentro do
+      `SelectionProcessDrawer`).
+- [x] `JobOpeningsTable`: `onRowClick` abre o drawer.
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] **Testado no browser** (JS-driven): clicar na vaga → drawer com
+      modelo/contrato/faixa salarial/requisitos/diferenciais/processo
+      vinculado → clicar no processo dentro do drawer → `SelectionProcessDrawer`
+      abre empilhado com os dados corretos. Zero erros de console em toda a
+      cadeia de drawers aninhados.

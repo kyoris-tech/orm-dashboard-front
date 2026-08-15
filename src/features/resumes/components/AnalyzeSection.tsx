@@ -16,7 +16,11 @@ const EMPTY_FILTERS: CandidateFiltersState = {
 
 const PAGE_SIZE = 10;
 
-export function AnalyzeSection() {
+export interface AnalyzeSectionProps {
+  onSelectionProcessCreated?: () => void;
+}
+
+export function AnalyzeSection({ onSelectionProcessCreated }: AnalyzeSectionProps) {
   const [draftFilters, setDraftFilters] = useState<CandidateFiltersState>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<CandidateFiltersState>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
@@ -66,7 +70,7 @@ export function AnalyzeSection() {
         onSearchChange={handleSearchChange}
       />
 
-      <CandidateTable filters={searchFilters} onPageChange={setPage} />
+      <CandidateTable filters={searchFilters} onPageChange={setPage} onSelectionProcessCreated={onSelectionProcessCreated} />
     </section>
   );
 }

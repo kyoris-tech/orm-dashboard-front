@@ -5,8 +5,9 @@ import { ImportToggle, type HomeSection } from '@/features/resumes/components/Im
 import { UploadArea } from '@/features/resumes/components/UploadArea';
 import { RecentImports } from '@/features/resumes/components/RecentImports';
 import { AnalyzeSection } from '@/features/resumes/components/AnalyzeSection';
+import { SelectionProcessesTable } from '@/features/selection-processes/components/SelectionProcessesTable';
+import { JobOpeningsView } from '@/features/job-openings/components/JobOpeningsView';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { Text } from '@/components/ui/Text';
 
 export function HomeView() {
   const [activeSection, setActiveSection] = useState<HomeSection>('import');
@@ -24,15 +25,19 @@ export function HomeView() {
 
       {activeSection === 'analyze' && (
         <section className="mt-10 w-full">
-          <AnalyzeSection />
+          <AnalyzeSection onSelectionProcessCreated={() => setActiveSection('proccess')} />
         </section>
       )}
 
-      {(activeSection === 'proccess' || activeSection === 'jobOpenings') && (
-        <section className="mt-10 text-center w-full">
-          <Text variant="subtitle" muted>
-            Estamos em construção
-          </Text>
+      {activeSection === 'proccess' && (
+        <section className="mt-10 w-full max-w-6xl mx-auto">
+          <SelectionProcessesTable />
+        </section>
+      )}
+
+      {activeSection === 'jobOpenings' && (
+        <section className="mt-10 w-full">
+          <JobOpeningsView />
         </section>
       )}
     </PageContainer>

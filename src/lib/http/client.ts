@@ -10,7 +10,10 @@ export const httpClient = axios.create({
 httpClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (typeof window !== 'undefined' && error?.response?.status === 401) {
+    const requestUrl = typeof error?.config?.url === 'string' ? error.config.url : '';
+    const isAuthEndpoint = requestUrl.startsWith('/auth/');
+
+    if (typeof window !== 'undefined' && error?.response?.status === 401 && !isAuthEndpoint) {
       window.location.href = '/login';
     }
 

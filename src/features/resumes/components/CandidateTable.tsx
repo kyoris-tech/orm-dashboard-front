@@ -1,23 +1,35 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { createColumnHelper, getCoreRowModel, getSortedRowModel, useReactTable, type SortingState } from '@tanstack/react-table';
-import { CloudDownload, Flame, Trash } from 'lucide-react';
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type RowSelectionState,
+  type SortingState,
+} from '@tanstack/react-table';
+import { Briefcase, CloudDownload, Flame, Trash } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { Button } from '@/components/ui/Button';
 import { useSessionUser } from '@/context/SessionProvider';
 import { useSearchResumesQuery } from '../hooks/use-search-resumes-query';
 import { useUndoableDelete } from '../hooks/use-undoable-delete';
 import { useHardDeleteResumeMutation } from '../hooks/use-hard-delete-resume-mutation';
 import { downloadResumePdf } from '../api';
 import { ResumeModal } from './ResumeModal';
+import { CreateSelectionProcessDialog } from '@/features/selection-processes/components/CreateSelectionProcessDialog';
+import { useCreateSelectionProcessMutation } from '@/features/selection-processes/hooks/use-create-selection-process-mutation';
 import type { ResumeListItem, ResumeSearchFilters } from '@/types/resumes';
 
 export interface CandidateTableProps {
   filters: ResumeSearchFilters;
   onPageChange: (page: number) => void;
+  onSelectionProcessCreated?: () => void;
 }
 
 interface CandidateRow {
@@ -44,19 +56,22 @@ function compatibilityTone(value: number): string {
 
 const columnHelper = createColumnHelper<CandidateRow>();
 
-export function CandidateTable({ filters, onPageChange }: CandidateTableProps) {
+export function CandidateTable({ filters, onPageChange, onSelectionProcessCreated }: CandidateTableProps) {
   const sessionUser = useSessionUser();
   const isAdmin = sessionUser?.role === 'admin';
 
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [selectedResume, setSelectedResume] = useState<ResumeListItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
+  const [isCreateProcessOpen, setIsCreateProcessOpen] = useState(false);
 
   const searchResumesQuery = useSearchResumesQuery(filters);
   const { requestDelete, undoDelete, dismiss, pendingId, isDeleting } = useUndoableDelete();
   const hardDeleteResumeMutation = useHardDeleteResumeMutation();
+  const createSelectionProcessMutation = useCreateSelectionProcessMutation();
 
   const rows = useMemo<CandidateRow[]>(() => {
     const resumes = searchResumesQuery.data?.data ?? [];
@@ -73,8 +88,26 @@ export function CandidateTable({ filters, onPageChange }: CandidateTableProps) {
     }));
   }, [searchResumesQuery.data]);
 
+  const selectedResumeIds = useMemo(() => Object.keys(rowSelection).filter((id) => rowSelection[id]), [rowSelection]);
+
   const columns = useMemo(
     () => [
+      columnHelper.display({
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            aria-label="Selecionar todos os candidatos"
+          />
+        ),
+        cell: ({ row }) => (
+          <div onClick={(event) => event.stopPropagation()}>
+            <Checkbox checked={row.getIsSelected()} onChange={row.getToggleSelectedHandler()} aria-label="Selecionar candidato" />
+          </div>
+        ),
+        enableSorting: false,
+      }),
       columnHelper.accessor('compatibility', {
         header: 'Compatível',
         enableSorting: false,
@@ -151,8 +184,11 @@ export function CandidateTable({ filters, onPageChange }: CandidateTableProps) {
   const table = useReactTable({
     data: rows,
     columns,
-    state: { sorting },
+    state: { sorting, rowSelection },
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
@@ -167,11 +203,41 @@ export function CandidateTable({ filters, onPageChange }: CandidateTableProps) {
     });
   }
 
+  function handleCreateSelectionProcess(name: string, jobOpeningId: string) {
+    createSelectionProcessMutation.mutate(
+      { name, resumeIds: selectedResumeIds, jobOpeningId: jobOpeningId || undefined },
+      {
+        onSuccess: () => {
+          setRowSelection({});
+          setIsCreateProcessOpen(false);
+          onSelectionProcessCreated?.();
+        },
+      },
+    );
+  }
+
   const pagination = searchResumesQuery.data?.pagination;
 
   return (
     <div className="w-full min-h-[400px] relative overflow-x-auto">
       {downloadError && <p className="text-center text-danger text-sm mb-4">{downloadError}</p>}
+
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-sm text-muted">
+          {selectedResumeIds.length > 0 ? `${selectedResumeIds.length} candidato(s) selecionado(s)` : 'Selecione candidatos na tabela'}
+        </span>
+
+        <Button
+          type="button"
+          variant="accent"
+          disabled={selectedResumeIds.length === 0}
+          onClick={() => setIsCreateProcessOpen(true)}
+          className="!w-auto !py-2 !px-4 text-sm flex items-center gap-2"
+        >
+          <Briefcase size={16} />
+          Abrir Processo Seletivo
+        </Button>
+      </div>
 
       <DataTable
         table={table}
@@ -207,6 +273,14 @@ export function CandidateTable({ filters, onPageChange }: CandidateTableProps) {
         onConfirm={handleConfirmHardDelete}
         onCancel={() => setHardDeleteId(null)}
         tone="danger"
+      />
+
+      <CreateSelectionProcessDialog
+        isOpen={isCreateProcessOpen}
+        candidateCount={selectedResumeIds.length}
+        isSubmitting={createSelectionProcessMutation.isPending}
+        onSubmit={handleCreateSelectionProcess}
+        onCancel={() => setIsCreateProcessOpen(false)}
       />
 
       <ResumeModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} resume={selectedResume} />

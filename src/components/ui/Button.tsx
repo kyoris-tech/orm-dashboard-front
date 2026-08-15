@@ -3,18 +3,24 @@ import { cn } from '@/lib/utils/cn';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
+  variant?: 'primary' | 'accent';
 }
 
-function ButtonComponent({ loading, disabled, className, children, ...props }: ButtonProps) {
+const VARIANT_CLASSES: Record<NonNullable<ButtonProps['variant']>, string> = {
+  primary: 'bg-primary text-white hover:brightness-110',
+  accent: 'bg-accent text-white hover:bg-accent-dark',
+};
+
+const DISABLED_CLASSES = 'bg-border text-muted opacity-70';
+
+function ButtonComponent({ loading, disabled, variant = 'primary', className, children, ...props }: ButtonProps) {
+  const isDisabled = loading || disabled;
+
   return (
     <button
       {...props}
-      disabled={loading || disabled}
-      className={cn(
-        'w-full py-3 rounded-full font-semibold text-white transition',
-        loading ? 'bg-muted cursor-not-allowed' : 'bg-primary hover:brightness-110',
-        className,
-      )}
+      disabled={isDisabled}
+      className={cn('w-full py-3 rounded-full font-semibold transition', isDisabled ? DISABLED_CLASSES : VARIANT_CLASSES[variant], className)}
     >
       {loading ? 'Carregando...' : children}
     </button>
