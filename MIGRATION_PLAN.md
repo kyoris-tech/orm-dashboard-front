@@ -1140,3 +1140,177 @@ segundo também a vaga fechou. Confirmei na UI que "Vagas Publicadas"
 mostra "Fechada" para ambas as vagas de teste, e que o drawer do processo
 mostra o badge "Vaga fechada". Zero erros de console. `eslint`/`next
 build` e `tsc`/`nest build` limpos (0 erros) nos dois repos.
+
+### 10.17 Auditoria e correções de segurança
+
+Varredura de APIs desprotegidas, vazamentos e problemas multi-tenant nos
+dois repos. Modelo confirmado com o cliente: **`admin` é o operador global
+(Kyoris), com poder sobre todas as empresas; tenants só têm `mod`/
+`recruiter`**. Correções aplicadas:
+
+**CRÍTICO — Segredo JWT público / typo:** `auth.module.ts` assinava com
+`process.env.JWT_SERCRET` (escrito errado) e `jwt.strategy.ts` verificava
+com `JWT_SECRET`; nenhum estava no `.env`, então ambos caíam no fallback
+público `'orm-dev-secret'` — qualquer um podia forjar um JWT de admin.
+Unificado em `getJwtSecret()` ([src/config/jwt.ts]) que **falha o boot** se
+`JWT_SECRET` não existir (sem fallback inseguro); gerado um segredo forte
+aleatório no `.env`. Verificado: token forjado com o segredo antigo agora
+retorna 401; boot falha sem a env.
+
+**CRÍTICO — Isolamento multi-tenant:** o poder cross-company do admin é
+intencional (operador Kyoris), mas nada impedia criar um `admin` dentro de
+um tenant, o que quebraria o isolamento. `UserService.create` agora rejeita
+(`403`) criar role `admin` fora da empresa do admin que está criando —
+como todo admin é da Kyoris, isso confina admins à Kyoris por indução.
+Verificado: criar admin na Mux → 403; criar recruiter na Mux → 201.
+
+**ALTO — Brute-force no login:** instalado `@nestjs/throttler`. Como a
+arquitetura BFF faz o backend enxergar só o IP do servidor Next, o
+`LoginThrottlerGuard` limita **por e-mail** (5/min) — protege a conta-alvo
+contra ataque direto à API ou via front, sem falso bloqueio de outros
+usuários. Verificado: 5ª tentativa → 429.
+
+**MÉDIO/BAIXO:**
+- Paginação: `pageSize`/`page` validados (`@IsNumberString`) e clampados
+  (`parsePagination`, máx 2000) — evita payload gigante; usos legítimos
+  (métricas admin) seguem funcionando. Verificado: `pageSize=abc`→400,
+  `pageSize=999999999`→200 clampado.
+- IDOR no status de bulk upload: agora escopado ao dono
+  (`ownerId`+`companyId`) e com limpeza por TTL (10min) da memória.
+- Swagger `/docs` só sobe fora de produção; CORS configurável via
+  `CORS_ORIGINS`.
+- Corrigido typo `'Recruiter'` no tipo do decorator `@Roles`.
+
+**Confirmado como correto (sem mudança):** JWT nunca exposto ao JS do
+cliente (cookie httpOnly + BFF); `selection-process`/`job-opening`
+escopados por `companyId`; rotas admin do Next encaminham o token do
+próprio usuário e o backend é a autoridade (`@Roles('admin')`), sem
+escalonamento; `.env` fora do versionamento; `ValidationPipe` global com
+`whitelist`.
+
+Nota operacional: o throttler usa storage em memória — para múltiplas
+instâncias em produção, trocar por um store compartilhado (ex.: Redis).
+Login e navegação validados no navegador após as mudanças (zero erros de
+console). `eslint`/`next build` e `tsc`/`nest build` limpos.
+
+### 10.18 Marca d'água no PDF de currículo + favicon com o logo Orm
+
+**Marca d'água no PDF** (`orm-back-node`): o download de currículo em PDF
+(`resume-pdf.service.ts`, gerado com `pdfkit`) agora sai timbrado:
+- Cabeçalho com o logo "Orm" (desenhado via `doc.path()` reaproveitando
+  exatamente os mesmos paths vetoriais do `OrmLogo.tsx` do front — sem
+  rasterização, sem dependência nova) + "Gerado por Orm · Kyoris Tech" à
+  direita + linha divisória na cor de destaque da marca.
+- Marca d'água diagonal do logo em baixa opacidade (6%), centralizada,
+  atrás do conteúdo.
+- Rodapé "Documento confidencial · Orm / Kyoris Tech".
+- Tudo reaplicado em cada página via o evento `pageAdded` do PDFKit, para
+  currículos que geram mais de uma página.
+
+Paths do logo centralizados em `src/common/branding/orm-logo.ts` (novo).
+
+**Armadilha do PDFKit encontrada e corrigida**: chamar `doc.text()` dentro
+do handler de `pageAdded` pode recursar infinitamente — o PDFKit decide se
+precisa paginar comparando `y` com `page.maxY()` (altura da página menos a
+margem inferior), e como o rodapé é desenhado propositalmente dentro da
+margem inferior, ele disparava uma nova página, que disparava o mesmo
+`pageAdded`, num loop até `RangeError: Maximum call stack size exceeded`.
+Corrigido zerando temporariamente `doc.page.margins.bottom` só durante o
+desenho do rodapé (restaurado logo em seguida) e usando `lineBreak: false`
+nos textos do cabeçalho/rodapé (que são de uma linha só, sem necessidade
+de quebra automática).
+
+**Favicon** (`orm-dashboard-front`): substituído o `favicon.ico` estático
+padrão do Next por ícones **gerados dinamicamente** com o logo real da
+Orm, via `ImageResponse` (`next/og`):
+- `src/app/icon.tsx` — 64×64, fundo azul-marinho da marca + wordmark "Orm"
+  em branco (mesmos paths SVG do `OrmLogo.tsx`, embutidos como data URI em
+  `lib/branding/orm-logo-svg.ts`).
+- `src/app/apple-icon.tsx` — 180×180, mesmo design (ícone de tela inicial
+  no iOS).
+- Removido `src/app/favicon.ico` para não concorrer com os novos ícones.
+- `proxy.ts`: o matcher do middleware excluía `favicon.ico` mas não as
+  novas rotas `/icon`/`/apple-icon` — sem usuário logado, essas rotas
+  caíam no redirect para `/login` (307), quebrando o favicon para
+  visitantes deslogados. Corrigido incluindo `icon` e `apple-icon` na
+  exclusão do matcher.
+
+**Testado**: baixei os dois currículos de teste via API direta e via
+front real (clique no botão "Baixar PDF") — PDF 200 OK, timbrado
+corretamente (cabeçalho, marca d'água diagonal e rodapé visíveis, sem
+sobrepor o texto do currículo), zero erro no servidor. `/icon` e
+`/apple-icon` retornam 200 `image/png` mesmo sem sessão (visitante
+deslogado também vê o favicon correto); confirmado no navegador que
+`<head>` só tem os dois `<link rel="icon">`/`<link rel="apple-touch-icon">`
+novos, sem favicon antigo conflitando. Zero erros de console em aba
+limpa. `tsc`/`nest build` e `eslint`/`next build` limpos (0 erros) nos
+dois repos.
+
+## 10.19 Cancelar vaga publicada + auditoria das ações de vagas/processos
+
+**Contexto**: até aqui, uma vaga publicada só saía do status "Aberta"
+automaticamente (quando todos os processos seletivos vinculados eram
+fechados/cancelados/concluídos). Não havia como um recrutador cancelar
+manualmente uma vaga que deixou de ser necessária. Além disso, uma
+auditoria ao backend revelou que `job-opening.service.ts` e
+`selection-process.service.ts` nunca chamavam `AuditLogService` —
+diferente de `company.service.ts`/`user.service.ts` (que já registravam
+alterações de status/nome) e de `resumes.service.ts` (que já registrava
+download/exclusão/restauração de currículos direto via
+`prisma.auditLog.create`). Ou seja, criar/cancelar/fechar/concluir vaga
+e processo seletivo não deixava nenhum rastro auditável.
+
+**Backend**:
+- `prisma/schema.prisma`: `JobOpeningStatus` ganhou o valor `CANCELLED`;
+  `JobOpening` ganhou `cancelledAt DateTime?`. Migração
+  `20260816023707_job_opening_cancelled_status`.
+- `job-opening.service.ts`: novo método `cancel()` — exige status
+  `OPEN`, marca a vaga como `CANCELLED` e, na mesma transação, cancela
+  em cascata todos os processos seletivos `OPEN` vinculados a ela
+  (espelhando o comportamento inverso já existente: fechar o último
+  processo seletivo de uma vaga a encerra automaticamente). Registra
+  `AuditLog` tanto da vaga quanto de cada processo cancelado em
+  cascata.
+- `job-opening.controller.ts`: nova rota `PATCH /job-openings/:id/cancel`.
+- `job-opening.service.ts`/`selection-process.service.ts`: injetado
+  `AuditLogService`; todas as ações que alteram estado (`create`,
+  `cancel`, `close`, `conclude`, e o fechamento automático de vaga sem
+  processos abertos) agora gravam um registro de auditoria com
+  entidade, ação, valor antigo/novo e quem executou.
+- Novo endpoint de leitura, admin-only (`@Roles('admin')`):
+  `GET /api/v1/admin/audit-logs?entityType=&page=&pageSize=`, paginado
+  (25 por página, máx. 100), mais recentes primeiro. `AuditLogModule`
+  ganhou `AuditLogController`.
+
+**Frontend**:
+- `types/job-opening.ts`: `JobOpeningStatus` ganhou `'CANCELLED'`.
+- `features/job-openings/labels.ts`: labels/tons de status
+  (`JOB_OPENING_STATUS_LABELS`/`_TONES`) reaproveitados na tabela, no
+  drawer da vaga e no badge de vaga vinculada dentro do drawer de
+  processo seletivo (antes hardcoded para só Aberta/Fechada).
+  Cancelamento
+- `JobOpeningDrawer.tsx`: botão "Cancelar vaga" (mesmo padrão visual e
+  de confirmação do "Cancelar processo" já existente), visível apenas
+  quando a vaga está `OPEN`, com `ConfirmDialog` avisando que os
+  processos seletivos em andamento vinculados também serão cancelados.
+- Nova aba **Auditoria** no painel Admin (`/admin`, visível apenas para
+  `admin` — a Kyoris): lista paginada de todos os `AuditLog`, com
+  filtro por entidade (Empresa/Usuário/Vaga/Processo
+  seletivo/Currículo), coluna "Alteração" truncada em 60 caracteres
+  (com `title` mostrando o valor completo) para não estourar a tabela
+  quando o valor auditado é um JSON grande (ex.: payload completo de um
+  currículo excluído).
+- `src/features/admin/audit/*`: `api.ts`, `labels.ts`,
+  `hooks/use-audit-logs-query.ts`, `components/AuditLogTable.tsx`,
+  `components/AuditLogView.tsx`; rota BFF
+  `src/app/api/admin/audit-logs/route.ts`.
+
+**Validação**: `tsc --noEmit` + `nest build` limpos no backend;
+`eslint` (0 erros) + `next build` limpos no frontend. Testado ao vivo:
+cancelei a vaga "Teste Máscara Salário" pelo drawer — status mudou para
+"Cancelada" na tabela e no drawer; conferi na aba Auditoria (admin) que
+o evento apareceu no topo da lista (`Vaga · Cancelamento · OPEN →
+CANCELLED`), junto com o histórico pré-existente de ações de
+currículos/empresas/usuários agora com rótulos amigáveis. Testei
+paginação (2 páginas, 29 registros) e o filtro por entidade (Vaga →
+mostra só o registro relevante). Zero erros de console em aba nova.

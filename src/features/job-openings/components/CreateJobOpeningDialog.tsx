@@ -5,9 +5,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Briefcase } from 'lucide-react';
 import { ModalPortal } from '@/components/ui/ModalPortal';
 import { Input } from '@/components/ui/Input';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Select } from '@/components/ui/Select';
 import { TagListInput } from '@/components/ui/TagListInput';
 import { Button } from '@/components/ui/Button';
+import { formatSalaryRange } from '@/lib/utils/currency';
 import { CONTRACT_TYPE_OPTIONS, WORK_MODEL_OPTIONS } from '../labels';
 import type { ContractType, CreateJobOpeningInput, WorkModel } from '@/types/job-opening';
 
@@ -22,13 +24,14 @@ const EMPTY_FORM: CreateJobOpeningInput = {
   title: '',
   workModel: 'REMOTE',
   contractType: 'CLT',
-  salaryRange: '',
   requirements: [],
   differentials: [],
 };
 
 export function CreateJobOpeningDialog({ isOpen, isSubmitting, onSubmit, onCancel }: CreateJobOpeningDialogProps) {
   const [form, setForm] = useState<CreateJobOpeningInput>(EMPTY_FORM);
+  const [salaryMin, setSalaryMin] = useState<number | undefined>(undefined);
+  const [salaryMax, setSalaryMax] = useState<number | undefined>(undefined);
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -37,12 +40,16 @@ export function CreateJobOpeningDialog({ isOpen, isSubmitting, onSubmit, onCance
       return;
     }
 
-    onSubmit({ ...form, title: form.title.trim(), salaryRange: form.salaryRange?.trim() || undefined });
+    onSubmit({ ...form, title: form.title.trim(), salaryRange: formatSalaryRange(salaryMin, salaryMax) });
     setForm(EMPTY_FORM);
+    setSalaryMin(undefined);
+    setSalaryMax(undefined);
   }
 
   function handleCancel() {
     setForm(EMPTY_FORM);
+    setSalaryMin(undefined);
+    setSalaryMax(undefined);
     onCancel();
   }
 
@@ -89,12 +96,19 @@ export function CreateJobOpeningDialog({ isOpen, isSubmitting, onSubmit, onCance
                   />
                 </div>
 
-                <Input
-                  label="Faixa salarial (opcional)"
-                  icon={Briefcase}
-                  value={form.salaryRange ?? ''}
-                  onChange={(event) => setForm((current) => ({ ...current, salaryRange: event.target.value }))}
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <CurrencyInput
+                    label="Salário mínimo (opcional)"
+                    value={salaryMin}
+                    onValueChange={setSalaryMin}
+                  />
+
+                  <CurrencyInput
+                    label="Salário máximo (opcional)"
+                    value={salaryMax}
+                    onValueChange={setSalaryMax}
+                  />
+                </div>
 
                 <TagListInput
                   label="Requisitos principais"

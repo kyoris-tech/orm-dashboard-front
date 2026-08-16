@@ -18,6 +18,7 @@ import { LinkJobOpeningDialog } from './LinkJobOpeningDialog';
 import { AddCandidatesDialog } from './AddCandidatesDialog';
 import { ConcludeSelectionProcessDialog } from './ConcludeSelectionProcessDialog';
 import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '../labels';
+import { JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES } from '@/features/job-openings/labels';
 import { ResumeModal } from '@/features/resumes/components/ResumeModal';
 import type { ResumeListItem } from '@/types/resumes';
 
@@ -162,8 +163,8 @@ export function SelectionProcessDrawer({ processId, onClose }: SelectionProcessD
               </span>
 
               {process.jobOpening && (
-                <Badge tone={process.jobOpening.status === 'OPEN' ? 'success' : 'neutral'} className="ml-auto">
-                  {process.jobOpening.status === 'OPEN' ? 'Vaga aberta' : 'Vaga fechada'}
+                <Badge tone={JOB_OPENING_STATUS_TONES[process.jobOpening.status]} className="ml-auto">
+                  {JOB_OPENING_STATUS_LABELS[process.jobOpening.status]}
                 </Badge>
               )}
             </button>

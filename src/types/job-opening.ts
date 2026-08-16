@@ -1,6 +1,6 @@
 export type WorkModel = 'REMOTE' | 'HYBRID' | 'ONSITE';
 export type ContractType = 'CLT' | 'PJ' | 'INTERNSHIP' | 'TEMPORARY';
-export type JobOpeningStatus = 'OPEN' | 'CLOSED';
+export type JobOpeningStatus = 'OPEN' | 'CLOSED' | 'CANCELLED';
 
 export interface JobOpeningSummary {
   id: string;

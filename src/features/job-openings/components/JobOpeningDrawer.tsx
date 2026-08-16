@@ -1,14 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Users } from 'lucide-react';
+import { isAxiosError } from 'axios';
+import { Loader2, Users, XCircle } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Toast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils/date';
-import { CONTRACT_TYPE_LABELS, WORK_MODEL_LABELS } from '../labels';
+import { CONTRACT_TYPE_LABELS, JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES, WORK_MODEL_LABELS } from '../labels';
 import { useJobOpeningQuery } from '../hooks/use-job-opening-query';
+import { useCancelJobOpeningMutation } from '../hooks/use-cancel-job-opening-mutation';
 import { SelectionProcessDrawer } from '@/features/selection-processes/components/SelectionProcessDrawer';
 import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '@/features/selection-processes/labels';
+
+const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir esta ação.';
+
+function extractErrorMessage(error: unknown): string {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
+  }
+
+  return DEFAULT_ERROR_MESSAGE;
+}
 
 export interface JobOpeningDrawerProps {
   jobOpeningId: string | null;
@@ -17,9 +31,24 @@ export interface JobOpeningDrawerProps {
 
 export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProps) {
   const jobOpeningQuery = useJobOpeningQuery(jobOpeningId);
+  const cancelJobOpeningMutation = useCancelJobOpeningMutation();
   const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 
   const jobOpening = jobOpeningQuery.data;
+  const isOpenStatus = jobOpening?.status === 'OPEN';
+
+  function handleConfirmCancel() {
+    if (!jobOpeningId) {
+      return;
+    }
+
+    cancelJobOpeningMutation.mutate(jobOpeningId, {
+      onSuccess: () => setIsCancelConfirmOpen(false),
+      onError: (error) => setActionErrorMessage(extractErrorMessage(error)),
+    });
+  }
 
   return (
     <>
@@ -35,7 +64,7 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
         {jobOpening && (
           <div className="flex flex-col gap-5">
             <div className="flex items-center justify-between">
-              <Badge tone={jobOpening.status === 'OPEN' ? 'success' : 'neutral'}>{jobOpening.status === 'OPEN' ? 'Aberta' : 'Fechada'}</Badge>
+              <Badge tone={JOB_OPENING_STATUS_TONES[jobOpening.status]}>{JOB_OPENING_STATUS_LABELS[jobOpening.status]}</Badge>
               <span className="text-xs text-muted">Criada em {formatDate(jobOpening.createdAt)}</span>
             </div>
 
@@ -118,11 +147,34 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
                 </div>
               )}
             </div>
+
+            {isOpenStatus && (
+              <button
+                onClick={() => setIsCancelConfirmOpen(true)}
+                className="flex items-center justify-center gap-2 text-sm text-danger border border-danger/30 rounded-full py-2 hover:bg-danger-soft transition mt-2"
+              >
+                <XCircle size={16} />
+                Cancelar vaga
+              </button>
+            )}
           </div>
         )}
       </Drawer>
 
       <SelectionProcessDrawer processId={selectedProcessId} onClose={() => setSelectedProcessId(null)} />
+
+      <ConfirmDialog
+        isOpen={isCancelConfirmOpen}
+        title="Cancelar vaga"
+        message="Isso encerra a vaga publicada como cancelada e cancela também os processos seletivos em andamento vinculados a ela. Confirma?"
+        confirmLabel={cancelJobOpeningMutation.isPending ? 'Cancelando...' : 'Cancelar vaga'}
+        cancelLabel="Voltar"
+        onConfirm={handleConfirmCancel}
+        onCancel={() => setIsCancelConfirmOpen(false)}
+        tone="danger"
+      />
+
+      {actionErrorMessage && <Toast message={actionErrorMessage} onDismiss={() => setActionErrorMessage(null)} />}
     </>
   );
 }

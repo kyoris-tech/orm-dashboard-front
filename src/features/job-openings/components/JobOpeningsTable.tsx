@@ -5,7 +5,7 @@ import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/re
 import { DataTable } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils/date';
-import { CONTRACT_TYPE_LABELS, WORK_MODEL_LABELS } from '../labels';
+import { CONTRACT_TYPE_LABELS, JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES, WORK_MODEL_LABELS } from '../labels';
 import { useJobOpeningsQuery } from '../hooks/use-job-openings-query';
 import { JobOpeningDrawer } from './JobOpeningDrawer';
 import type { JobOpeningSummary } from '@/types/job-opening';
@@ -33,7 +33,7 @@ const columns = [
   }),
   columnHelper.accessor('status', {
     header: 'Status',
-    cell: (info) => <Badge tone={info.getValue() === 'OPEN' ? 'success' : 'neutral'}>{info.getValue() === 'OPEN' ? 'Aberta' : 'Fechada'}</Badge>,
+    cell: (info) => <Badge tone={JOB_OPENING_STATUS_TONES[info.getValue()]}>{JOB_OPENING_STATUS_LABELS[info.getValue()]}</Badge>,
   }),
   columnHelper.accessor('createdAt', {
     header: 'Criada em',

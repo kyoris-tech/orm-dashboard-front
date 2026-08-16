@@ -5,6 +5,7 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { CompaniesTable } from '../companies/components/CompaniesTable';
 import { UsersView } from '../users/components/UsersView';
 import { AdminMetricsView } from '../metrics/components/AdminMetricsView';
+import { AuditLogView } from '../audit/components/AuditLogView';
 import { AdminToggle, type AdminSection } from './AdminToggle';
 
 export function AdminView() {
@@ -29,6 +30,12 @@ export function AdminView() {
       {activeSection === 'metrics' && (
         <section className="mt-10 w-full max-w-6xl mx-auto">
           <AdminMetricsView />
+        </section>
+      )}
+
+      {activeSection === 'audit' && (
+        <section className="mt-10 w-full max-w-6xl mx-auto">
+          <AuditLogView />
         </section>
       )}
     </PageContainer>

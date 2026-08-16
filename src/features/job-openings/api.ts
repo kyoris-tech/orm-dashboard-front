@@ -15,3 +15,8 @@ export async function createJobOpening(input: CreateJobOpeningInput): Promise<Jo
   const { data } = await httpClient.post<JobOpeningSummary>('/job-openings', input);
   return data;
 }
+
+export async function cancelJobOpening(id: string): Promise<JobOpeningDetail> {
+  const { data } = await httpClient.patch<JobOpeningDetail>(`/job-openings/${id}/cancel`);
+  return data;
+}

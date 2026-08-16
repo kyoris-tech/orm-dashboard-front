@@ -25,4 +25,8 @@ export const queryKeys = {
     all: ['users'] as const,
     list: () => [...queryKeys.users.all, 'list'] as const,
   },
+  auditLogs: {
+    all: ['audit-logs'] as const,
+    list: (page: number, entityType: string) => [...queryKeys.auditLogs.all, 'list', page, entityType] as const,
+  },
 };
