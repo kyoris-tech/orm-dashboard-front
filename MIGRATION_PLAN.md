@@ -1704,3 +1704,38 @@ Enterprise pra Básico e sujando CNPJ/dia de cobrança dela com dado de
 autofill do navegador — percebido pela discrepância entre o que a UI
 mostrava e o log de Auditoria, corrigido imediatamente restaurando a
 Kyoris Tech pra Enterprise e limpando os campos indevidos.
+
+## 10.26 Landing page da Orm em `/`
+
+- `/` deixou de redirecionar para `/home` e agora renderiza `LandingView` (`src/features/marketing/components/LandingView.tsx`), a landing page pública da Orm Intelligence, com 4 seções `min-h-screen`: Hero, Para Sua Empresa, Planos e Conheça a Orm.
+- `src/proxy.ts`: `/` foi adicionado a `ALWAYS_PUBLIC_PATHS` (antes só `/vagas`), permitindo acesso sem sessão. Sem essa mudança, o proxy (equivalente ao middleware nesta versão do Next) redirecionava qualquer visitante não autenticado direto para `/login` antes mesmo de renderizar a página.
+- `Header` e `Footer` globais (`src/components/layout/Header.tsx`, `Footer.tsx`) agora retornam `null` quando `pathname === '/'`, já que a landing tem seu próprio nav/rodapé com identidade visual própria (tema escuro). `Footer` virou client component (`usePathname`) para viabilizar essa checagem.
+- Hero com um círculo azul (`GlowOrb.tsx`) animado via `framer-motion`, contido em uma área pequena (`h-64/h-80`) atrás do título, se movendo em um raio curto (`x`/`y` entre -20 e 24px) em loop infinito — não um efeito de tela cheia.
+- Seção "Para Sua Empresa" reaproveita literalmente os rótulos das abas já usadas em `/home` (`Importar Arquivos`, `Analisar Candidatos`, `Processos Seletivos`, `Vagas Publicadas`, ver `ImportToggle.tsx`).
+- Seção "Planos" reaproveita `FEATURE_LABELS` (`src/features/plan/labels.ts`) e os limites reais seedados na migração `20260816145544_dynamic_plans_and_company_fields` (Básico: 2 usuários/50 currículos, sem features; Pro: 10 usuários/500 currículos + todas as features; Enterprise: ilimitado + todas as features). Sem inventar preços — a seção convida a falar com o time em vez de exibir valores fictícios.
+- Todos os CTAs ("Entrar", "Conhecer o Sistema") apontam para `/login`.
+- `globals.css`: adicionado `scroll-behavior: smooth` no `html` para as âncoras de navegação (`#empresa`, `#planos`, `#sobre`).
+- Validado: `eslint` (0 erros), `tsc --noEmit` (limpo) e `next build` (limpo); conferido no navegador que `/` mostra a landing sem sessão, `/login` continua funcionando e os links do nav apontam para as âncoras/`/login` corretos.
+
+## 10.27 Redesign da seção "Para Sua Empresa" + navbar fixo com scroll-spy
+
+- Seção "Para Sua Empresa" (`LandingView.tsx`) redesenhada em duas colunas: texto à esquerda ("Na Orm você tem:" / título de impacto / subtítulo / parágrafo com o valor real da plataforma) e, à direita, `CapabilityOrbit.tsx` — o círculo azul (`GlowOrb`) ampliado (`scale-150`) com 4 cards flutuando ao redor (um central em destaque + 3 satélites), cada um com ícone, título e legenda curta, reaproveitando os mesmos 4 pilares de `CAPABILITIES` (Analisar Candidatos, Importar Arquivos, Vagas Publicadas, Processos Seletivos). Os cards fazem um leve movimento vertical contínuo via `framer-motion`. Optei por não inventar métricas/percentuais fictícios (como "00%" do mockup) para não apresentar dados falsos como reais — troquei por legendas curtas e verdadeiras sobre cada funcionalidade.
+- `LandingNav.tsx` agora é `fixed` (flutua sobre todas as seções, não só o hero) e usa um `IntersectionObserver` nas 4 seções (`topo`, `empresa`, `planos`, `sobre`) para saber qual está em foco:
+  - Enquanto a seção `topo` (hero) está em foco, a barra fica larga (1100px) e transparente.
+  - Ao entrar em qualquer seção seguinte, a barra anima (`framer-motion`, largura + cor de fundo) para um formato mais compacto (640px) com fundo escuro semi-opaco e desfoque, e o item do menu correspondente à seção visível ganha destaque (borda/texto na cor accent).
+- Validado: `eslint`, `tsc --noEmit` e `next build` limpos. Conferido via DOM (accessibility tree) e console sem erros que o conteúdo, os links e a estrutura estão corretos.
+- **Limitação de ambiente**: não consegui capturar um screenshot nem simular scroll real nesta sessão porque o painel do navegador não está aberto/exibido para o usuário ("Browser pane is not displayed, so the page is not compositing frames") — as tentativas de `window.scrollTo`, clique nos links âncora e o `computer scroll` falharam por essa razão. A lógica foi validada por revisão de código e inspeção de DOM, mas recomendo conferir visualmente a animação do navbar e o scroll-spy ao abrir a aplicação normalmente.
+
+## 10.28 Novo layout de "Planos" com preços, botão "Vagas" no nav, animação mais fluida
+
+- Seção "Planos" (`PlanPricingSection.tsx`) redesenhada para o layout enviado: toggle Anual (com badge "20% off") / Mensal (`PricingToggle.tsx`, com estado local), heading "Quantos candidatos sua empresa vai analisar por mês?", 3 cards com corte no topo (`PricingCard.tsx` — Easy/Company/Business, com "até N/mês", preço riscado + preço atual formatado com centavos menores, botão "Assinar Plano" → `/login`) e uma linha extra para o plano Enterprise (análise ilimitada + cartão "Fatura Mensal" com preço por análise e mínimo de consultas + link "Plano Personalizado"). Os valores (R$79,90→59,90, R$119,90→89,90, R$159,90→129,90, R$2,90/análise) foram copiados exatamente do mockup enviado — como são preços reais de um produto real, não fiz nenhuma alteração neles; se não forem os valores finais, é só pedir o ajuste.
+- **Não reproduzi a fileira de logos "+200 empresas confiam na Orm" com marcas reais (P&G, Intel, Itaú, C6, XP)** do mockup: isso afirmaria publicamente que essas empresas específicas são clientes/endossam a Orm, o que não é verdade (o banco de dev só tem 2 empresas cadastradas) e seria uma alegação de endosso falsa sobre marcas de terceiros. Substituí por um parágrafo de apoio sem alegações fabricadas. Se vocês tiverem clientes reais e logos com autorização de uso, me manda que eu coloco a fileira de verdade.
+- `PLAN_COPY`/`PlanCard.tsx`/`ALL_PLAN_FEATURES` (do card antigo baseado em `FEATURE_LABELS`) foram removidos, substituídos por `PRICED_PLANS`/`ENTERPRISE_PLAN` em `content.ts`.
+- `LandingNav.tsx`: adicionado um botão "Vagas" (outline) ao lado de "Entrar", levando para `/vagas`; a largura animada da barra (720px/1180px) foi ajustada para caber o botão extra.
+- Corrigida a sensação de animação "travada" na seção "Para Sua Empresa" (`CapabilityOrbit.tsx`, `GlowOrb.tsx`): os cards flutuantes usavam `backdrop-blur-sm` (recalculado a cada frame enquanto se movem — pesado) e uma transição em 3 pontos (`[0, x, 0]`) que reinicia bruscamente a cada loop. Troquei por fundo sólido semi-opaco (sem `backdrop-filter`), transição `repeatType: 'mirror'` (vaivém contínuo, sem reinício abrupto) e `will-change-transform`; mesma correção aplicada ao brilho azul do hero (`GlowOrb.tsx`).
+- Validado: `eslint`, `tsc --noEmit` e `next build` limpos; testado ao vivo numa aba nova (sem histórico de erro de compilações anteriores) — sem erros de console, conteúdo renderiza corretamente e o toggle Anual/Mensal alterna os preços/rótulos corretamente.
+
+## 10.29 Créditos "Desenvolvido pela Kyoris Tech" no rodapé
+
+- Adicionado um link "Desenvolvido pela Kyoris Tech" (`target="_blank"`, `rel="noopener noreferrer"`) apontando para `https://kyoristech.com`, abaixo do "Orm. All rights reserved" em ambos os rodapés: o rodapé global (`src/components/layout/Footer.tsx`, usado em todas as páginas exceto `/`) e o rodapé da landing (`LandingView.tsx`, seção "Conheça a Orm").
+- Validado: `eslint`, `tsc --noEmit` e `next build` limpos; conferido em `/` e em `/vagas` que o link existe, aponta para o domínio correto e abre em nova aba.
