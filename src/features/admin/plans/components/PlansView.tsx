@@ -5,12 +5,12 @@ import { isAxiosError } from 'axios';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
-import { CreateJobOpeningDialog } from './CreateJobOpeningDialog';
-import { JobOpeningsTable } from './JobOpeningsTable';
-import { useCreateJobOpeningMutation } from '../hooks/use-create-job-opening-mutation';
-import type { CreateJobOpeningInput } from '@/types/job-opening';
+import { PlansTable } from './PlansTable';
+import { PlanFormDialog } from './PlanFormDialog';
+import { useCreatePlanMutation } from '../hooks/use-create-plan-mutation';
+import type { CreatePlanInput } from '@/types/company';
 
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir esta ação.';
+const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir a ação.';
 
 function extractErrorMessage(error: unknown): string {
   if (isAxiosError<{ message?: string }>(error)) {
@@ -20,33 +20,34 @@ function extractErrorMessage(error: unknown): string {
   return DEFAULT_ERROR_MESSAGE;
 }
 
-export function JobOpeningsView() {
+export function PlansView() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const createJobOpeningMutation = useCreateJobOpeningMutation();
+  const createPlanMutation = useCreatePlanMutation();
 
-  function handleSubmit(input: CreateJobOpeningInput) {
-    createJobOpeningMutation.mutate(input, {
+  function handleCreate(input: CreatePlanInput) {
+    createPlanMutation.mutate(input, {
       onSuccess: () => setIsCreateOpen(false),
       onError: (error) => setErrorMessage(extractErrorMessage(error)),
     });
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-6">
       <div className="flex items-center justify-end">
         <Button type="button" variant="accent" onClick={() => setIsCreateOpen(true)} className="!w-auto !py-2 !px-4 text-sm flex items-center gap-2">
           <Plus size={16} />
-          Adicionar Vaga
+          Adicionar Plano
         </Button>
       </div>
 
-      <JobOpeningsTable />
+      <PlansTable />
 
-      <CreateJobOpeningDialog
+      <PlanFormDialog
         isOpen={isCreateOpen}
-        isSubmitting={createJobOpeningMutation.isPending}
-        onSubmit={handleSubmit}
+        plan={null}
+        isSubmitting={createPlanMutation.isPending}
+        onSubmit={handleCreate}
         onCancel={() => setIsCreateOpen(false)}
       />
 

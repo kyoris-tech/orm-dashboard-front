@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { CompaniesTable } from '../companies/components/CompaniesTable';
+import { CompaniesView } from '../companies/components/CompaniesView';
 import { UsersView } from '../users/components/UsersView';
 import { AdminMetricsView } from '../metrics/components/AdminMetricsView';
 import { AuditLogView } from '../audit/components/AuditLogView';
+import { PlansView } from '../plans/components/PlansView';
 import { AdminToggle, type AdminSection } from './AdminToggle';
 
 export function AdminView() {
@@ -17,7 +18,7 @@ export function AdminView() {
 
       {activeSection === 'companies' && (
         <section className="mt-10 w-full max-w-6xl mx-auto">
-          <CompaniesTable />
+          <CompaniesView />
         </section>
       )}
 
@@ -36,6 +37,12 @@ export function AdminView() {
       {activeSection === 'audit' && (
         <section className="mt-10 w-full max-w-6xl mx-auto">
           <AuditLogView />
+        </section>
+      )}
+
+      {activeSection === 'plans' && (
+        <section className="mt-10 w-full max-w-6xl mx-auto">
+          <PlansView />
         </section>
       )}
     </PageContainer>

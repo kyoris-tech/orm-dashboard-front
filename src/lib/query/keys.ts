@@ -29,6 +29,14 @@ export const queryKeys = {
     all: ['audit-logs'] as const,
     list: (page: number, entityType: string) => [...queryKeys.auditLogs.all, 'list', page, entityType] as const,
   },
+  plan: {
+    all: ['plan'] as const,
+    mine: () => [...queryKeys.plan.all, 'mine'] as const,
+  },
+  plans: {
+    all: ['plans'] as const,
+    list: () => [...queryKeys.plans.all, 'list'] as const,
+  },
   publicJobOpening: {
     all: ['public-job-opening'] as const,
     list: () => [...queryKeys.publicJobOpening.all, 'list'] as const,

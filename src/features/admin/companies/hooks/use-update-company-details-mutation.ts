@@ -2,13 +2,14 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query/keys';
-import { updateCompanyName } from '../api';
+import { updateCompanyDetails } from '../api';
+import type { UpdateCompanyInput } from '@/types/company';
 
-export function useUpdateCompanyNameMutation() {
+export function useUpdateCompanyDetailsMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => updateCompanyName(id, name),
+    mutationFn: ({ id, input }: { id: string; input: UpdateCompanyInput }) => updateCompanyDetails(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
     },
