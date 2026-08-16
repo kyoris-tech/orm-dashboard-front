@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronDown, FileDown, House, LogOut } from 'lucide-react';
+import { Bell, ChevronDown, FileDown, House, LogOut, ShieldCheck } from 'lucide-react';
 import { OrmLogo } from '@/components/ui/OrmLogo';
 import { useLogoutMutation } from '@/features/auth/hooks/use-logout-mutation';
 import type { SessionUser } from '@/types/auth';
@@ -19,6 +19,8 @@ const NAV_LINKS = [
   { href: '/metrics', label: 'Relatórios', icon: FileDown },
 ];
 
+const ADMIN_NAV_LINK = { href: '/admin', label: 'Administração', icon: ShieldCheck };
+
 export function Header({ user }: HeaderProps) {
   const pathname = usePathname();
   const logoutMutation = useLogoutMutation();
@@ -27,6 +29,7 @@ export function Header({ user }: HeaderProps) {
 
   const isPublicRoute = useMemo(() => PUBLIC_PATHS.includes(pathname), [pathname]);
   const showProfileMenu = Boolean(user) && !isPublicRoute;
+  const navLinks = useMemo(() => (user?.role === 'admin' ? [...NAV_LINKS, ADMIN_NAV_LINK] : NAV_LINKS), [user?.role]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -51,6 +54,8 @@ export function Header({ user }: HeaderProps) {
             <button
               className="flex items-center gap-2 hover:bg-surface-soft px-3 py-2 rounded-lg transition"
               onClick={() => setMenuOpen((open) => !open)}
+              title="Notificações"
+              aria-label="Notificações"
             >
               <Bell />
               <div className="flex flex-col items-start ml-6 text-left">
@@ -67,7 +72,7 @@ export function Header({ user }: HeaderProps) {
                 </div>
 
                 <div className="flex flex-col py-2">
-                  {NAV_LINKS.map(({ href, label, icon: Icon }) => (
+                  {navLinks.map(({ href, label, icon: Icon }) => (
                     <Link key={href} href={href} className="flex items-center gap-2 px-4 py-2 hover:bg-surface-soft transition text-foreground">
                       <Icon size={16} /> {label}
                     </Link>

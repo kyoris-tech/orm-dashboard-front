@@ -1,15 +1,8 @@
 import { NextResponse } from 'next/server';
-import { backendClient, withBearerToken } from '@/lib/http/backend-client';
 import { forwardAxiosError } from '@/lib/http/forward-error';
 import { requireSessionToken } from '@/lib/auth/require-session';
 import { getSessionUser } from '@/lib/auth/session';
-import type { ResumeListItem } from '@/types/resumes';
-
-const METRICS_FETCH_PAGE_SIZE = 500;
-
-interface BackendResumeItem extends ResumeListItem {
-  company?: { id: string } | null;
-}
+import { getCompanyScopedResumes } from '@/lib/resumes/get-company-scoped-resumes';
 
 export async function GET() {
   const token = await requireSessionToken();
@@ -25,13 +18,7 @@ export async function GET() {
   }
 
   try {
-    const { data } = await backendClient.get<{ data: BackendResumeItem[] }>('/resumes', {
-      ...withBearerToken(token),
-      params: { page: 1, pageSize: METRICS_FETCH_PAGE_SIZE },
-    });
-
-    const companyResumes = (data.data ?? []).filter((resume) => resume.company?.id === sessionUser.companyId);
-
+    const companyResumes = await getCompanyScopedResumes(token, sessionUser.companyId);
     return NextResponse.json({ data: companyResumes });
   } catch (error) {
     return forwardAxiosError(error, 'Não foi possível carregar as métricas.');

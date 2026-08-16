@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils/date';
 import { CONTRACT_TYPE_LABELS, WORK_MODEL_LABELS } from '../labels';
 import { useJobOpeningQuery } from '../hooks/use-job-opening-query';
 import { SelectionProcessDrawer } from '@/features/selection-processes/components/SelectionProcessDrawer';
+import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '@/features/selection-processes/labels';
 
 export interface JobOpeningDrawerProps {
   jobOpeningId: string | null;
@@ -111,7 +112,7 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
                         </span>
                       </span>
 
-                      <Badge tone={process.status === 'OPEN' ? 'success' : 'neutral'}>{process.status === 'OPEN' ? 'Aberto' : 'Cancelado'}</Badge>
+                      <Badge tone={SELECTION_PROCESS_STATUS_TONES[process.status]}>{SELECTION_PROCESS_STATUS_LABELS[process.status]}</Badge>
                     </button>
                   ))}
                 </div>

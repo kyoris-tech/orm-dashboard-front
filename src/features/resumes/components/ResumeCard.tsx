@@ -28,6 +28,8 @@ function ResumeCardComponent({ resume, onOpen, onDelete, onDownload, onHardDelet
       <div className="flex flex-row w-full justify-between items-center">
         <button
           className="text-accent w-6 h-6"
+          title="Baixar PDF"
+          aria-label="Baixar PDF"
           onClick={(event) => {
             event.stopPropagation();
             onDownload(resume);
@@ -41,6 +43,7 @@ function ResumeCardComponent({ resume, onOpen, onDelete, onDownload, onHardDelet
             <button
               className="text-danger/70 w-5 h-5 hover:text-danger transition"
               title="Excluir permanentemente"
+              aria-label="Excluir permanentemente"
               onClick={(event) => {
                 event.stopPropagation();
                 onHardDelete(resume.id);
@@ -52,6 +55,8 @@ function ResumeCardComponent({ resume, onOpen, onDelete, onDownload, onHardDelet
 
           <button
             className="text-foreground w-6 h-6 hover:text-danger transition"
+            title="Excluir"
+            aria-label="Excluir"
             onClick={(event) => {
               event.stopPropagation();
               onDelete(resume.id);

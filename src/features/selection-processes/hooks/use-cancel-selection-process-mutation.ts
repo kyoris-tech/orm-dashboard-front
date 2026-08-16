@@ -11,6 +11,7 @@ export function useCancelSelectionProcessMutation() {
     mutationFn: (id: string) => cancelSelectionProcess(id),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.selectionProcesses.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobOpenings.all });
     },
   });
 }

@@ -138,6 +138,8 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
             <div className="flex gap-2 items-center">
               <button
                 className="p-2 text-accent"
+                title="Baixar PDF"
+                aria-label="Baixar PDF"
                 onClick={async (event) => {
                   event.stopPropagation();
                   try {
@@ -155,6 +157,7 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
                 <button
                   className="p-2 text-danger/70 hover:text-danger transition"
                   title="Excluir permanentemente"
+                  aria-label="Excluir permanentemente"
                   onClick={(event) => {
                     event.stopPropagation();
                     setHardDeleteId(row.id);
@@ -166,6 +169,8 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
 
               <button
                 className="p-2 text-foreground hover:text-danger transition"
+                title="Excluir"
+                aria-label="Excluir"
                 onClick={(event) => {
                   event.stopPropagation();
                   requestDelete(row.id);

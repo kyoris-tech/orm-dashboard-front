@@ -21,7 +21,22 @@ export async function cancelSelectionProcess(id: string): Promise<SelectionProce
   return data;
 }
 
+export async function closeSelectionProcess(id: string): Promise<SelectionProcessSummary> {
+  const { data } = await httpClient.patch<SelectionProcessSummary>(`/selection-processes/${id}/close`);
+  return data;
+}
+
+export async function concludeSelectionProcess(id: string, resumeId: string): Promise<SelectionProcessSummary> {
+  const { data } = await httpClient.patch<SelectionProcessSummary>(`/selection-processes/${id}/conclude`, { resumeId });
+  return data;
+}
+
 export async function linkJobOpeningToSelectionProcess(id: string, jobOpeningId: string): Promise<SelectionProcessSummary> {
   const { data } = await httpClient.patch<SelectionProcessSummary>(`/selection-processes/${id}/job-opening`, { jobOpeningId });
+  return data;
+}
+
+export async function addCandidatesToSelectionProcess(id: string, resumeIds: string[]): Promise<SelectionProcessDetail> {
+  const { data } = await httpClient.post<SelectionProcessDetail>(`/selection-processes/${id}/candidates`, { resumeIds });
   return data;
 }

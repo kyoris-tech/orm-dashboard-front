@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils/date';
 import { useSelectionProcessesQuery } from '../hooks/use-selection-processes-query';
 import { SelectionProcessDrawer } from './SelectionProcessDrawer';
+import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '../labels';
 import type { SelectionProcessSummary } from '@/types/selection-process';
 
 const columnHelper = createColumnHelper<SelectionProcessSummary>();
@@ -26,9 +27,7 @@ const columns = [
   }),
   columnHelper.accessor('status', {
     header: 'Status',
-    cell: (info) => (
-      <Badge tone={info.getValue() === 'OPEN' ? 'success' : 'neutral'}>{info.getValue() === 'OPEN' ? 'Aberto' : 'Cancelado'}</Badge>
-    ),
+    cell: (info) => <Badge tone={SELECTION_PROCESS_STATUS_TONES[info.getValue()]}>{SELECTION_PROCESS_STATUS_LABELS[info.getValue()]}</Badge>,
   }),
   columnHelper.accessor('createdAt', {
     header: 'Criado em',

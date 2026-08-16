@@ -1,7 +1,7 @@
 import type { ResumeListItem } from './resumes';
 import type { JobOpeningStatus } from './job-opening';
 
-export type SelectionProcessStatus = 'OPEN' | 'CLOSED';
+export type SelectionProcessStatus = 'OPEN' | 'CLOSED' | 'CANCELLED' | 'CONCLUDED';
 
 export interface SelectionProcessJobOpeningRef {
   id: string;
@@ -9,12 +9,22 @@ export interface SelectionProcessJobOpeningRef {
   status: JobOpeningStatus;
 }
 
+export interface SelectionProcessSelectedResumeRef {
+  id: string;
+  fullName: string;
+  dataJson?: { fullName?: string } | null;
+}
+
 export interface SelectionProcessSummary {
   id: string;
   name: string;
   status: SelectionProcessStatus;
   createdAt: string;
+  closedAt: string | null;
+  cancelledAt: string | null;
+  concludedAt: string | null;
   jobOpening: SelectionProcessJobOpeningRef | null;
+  selectedResume: SelectionProcessSelectedResumeRef | null;
   _count: {
     candidates: number;
   };

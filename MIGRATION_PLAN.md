@@ -717,3 +717,426 @@ Mesmo padrão do `SelectionProcessDrawer`: clicar na linha da tabela abre um
       vinculado → clicar no processo dentro do drawer → `SelectionProcessDrawer`
       abre empilhado com os dados corretos. Zero erros de console em toda a
       cadeia de drawers aninhados.
+
+### 10.7 Adicionar candidato a um processo seletivo já existente
+
+Como o `SelectionProcessDrawer` já é reaproveitado tanto em "Processos
+Seletivos" quanto dentro do drawer da vaga (Fase 10.6), essa única mudança
+cobre os dois casos que o usuário pediu ("adicionar um candidato em uma
+vaga e processo seletivo já existente") — vaga e processo seletivo se
+conectam pelo mesmo drawer.
+
+**Backend**:
+- [x] `SelectionProcessService.addCandidates(id, dto, user)` — escopado por
+      empresa, bloqueia se o processo estiver `CLOSED`
+      (`BadRequestException`), ignora silenciosamente currículos que já
+      estão no processo (`createMany` só com os que faltam, sem duplicar
+      via `@@unique([selectionProcessId, resumeId])` do schema). `POST
+      /api/v1/selection-processes/:id/candidates`.
+
+**Frontend**:
+- [x] **Extraí a lógica de "currículos escopados por empresa"** (que já
+      existia só dentro da rota de métricas) para
+      `lib/resumes/get-company-scoped-resumes.ts` — reaproveitada agora por
+      **dois** consumidores: `app/api/resumes/metrics/route.ts` (já
+      existia) e o novo `app/api/resumes/company/route.ts` (lista completa
+      para o seletor de candidatos). Evita duplicar o filtro defensivo por
+      `companyId` numa terceira rota.
+- [x] `AddCandidatesDialog` — reaproveita `SearchInput` e `Checkbox`
+      (ambos já genéricos), busca via `useCompanyResumesQuery` (novo hook),
+      filtra localmente por nome e exclui quem já está no processo
+      (`existingResumeIds`).
+- [x] `SelectionProcessDrawer`: botão "Adicionar candidato" (só quando
+      `status === 'OPEN'`, ao lado da contagem de candidatos) abre o
+      diálogo; ao confirmar, invalida `selectionProcesses.all` — a lista
+      de candidatos do drawer atualiza sozinha.
+- [x] `npx eslint .` (0 erros) e `npx next build` sem erros.
+- [x] **Testado no browser** contra o backend real: abri um processo com 1
+      candidato, cliquei "Adicionar candidato", o seletor mostrou só os
+      currículos da empresa que ainda não estavam no processo (excluindo
+      corretamente um currículo soft-deleted de um teste anterior — mesmo
+      comportamento do resto do app), selecionei um, confirmei, o drawer
+      atualizou para "2 candidatos neste processo." sem reload. Zero erros
+      de console.
+
+### 10.8 Tela de Administração (Empresas, Usuários, Métricas)
+
+Nova tela `/admin`, com o mesmo padrão de menu pílula (`SegmentedControl`) já
+usado em Início, exibindo três abas: **Empresas**, **Usuários** e
+**Métricas**. Apenas o role `admin` pode ver o link "Administração" no menu
+do header e acessar a rota — usuários sem esse papel são redirecionados para
+`/home` no próprio Server Component da página
+(`src/app/(protected)/admin/page.tsx`), lendo `getSessionUser()` do cookie
+httpOnly antes de renderizar qualquer coisa no cliente.
+
+Nesta primeira entrega, apenas a aba **Empresas** foi totalmente
+implementada; Usuários e Métricas ficam com um estado "em construção"
+(`ComingSoonSection`), preparando a estrutura para as próximas fases sem
+bloquear a entrega.
+
+**Backend**: o módulo `company` já existia (create, listAll, updateStatus)
+mas não tinha edição de nome nem rotação de token. Adicionados:
+- `PATCH /api/v1/companies/:id` — `UpdateCompanyDto { name }`, grava log de
+  auditoria (`UPDATE_NAME`).
+- `POST /api/v1/companies/:id/regenerate-token` — gera um novo `apiKey`
+  (`randomBytes(24).toString('hex')`, mesmo esquema usado na criação),
+  grava log de auditoria (`REGENERATE_TOKEN`).
+- Exclusão (soft delete) reaproveita o endpoint já existente
+  `PATCH /:id/status` com `status: DELETED`, que já bloqueia excluir a
+  própria empresa e empresas com usuários ativos — nenhuma mudança de
+  backend foi necessária aqui.
+
+Todas as três rotas continuam protegidas por `@Roles('admin')` +
+`RolesGuard`, então mesmo chamando a API diretamente sem ser admin, o
+backend responde 403.
+
+**Frontend**: seguindo o padrão dos módulos anteriores —
+- `types/company.ts`, `features/admin/companies/api.ts` (client HTTP),
+  4 Route Handlers em `app/api/admin/companies/**` como BFF (GET lista,
+  PATCH nome, PATCH status, POST regenerate-token), hooks React Query
+  (`useCompaniesQuery`, `useUpdateCompanyNameMutation`,
+  `useDeleteCompanyMutation`, `useRegenerateCompanyTokenMutation`), todos
+  invalidando `queryKeys.companies.all` no sucesso.
+- `CompaniesTable.tsx`: tabela `TanStack Table` com colunas Nome, E-mail,
+  Status (badge colorido por status) e Criada em, mais uma coluna de Ações
+  com três ícones (editar nome, gerar novo token, excluir), desabilitados
+  quando a empresa já está `DELETED`.
+- `EditCompanyNameDialog.tsx`: reaproveita o padrão de modal com
+  `ModalPortal`/`AnimatePresence` e o reset de estado no corpo do render
+  (`wasOpen`) para pré-popular o campo com o nome atual sempre que reaberto
+  — mesmo problema do `LinkJobOpeningDialog` documentado na seção 10.x foi
+  evitado desde o início aqui.
+- `NewTokenDialog.tsx`: modal novo, mostra o token gerado uma única vez com
+  botão de copiar (`navigator.clipboard`), reforçando que ele não será
+  exibido novamente — o backend não guarda o token em texto plano em
+  nenhum lugar visível além dessa resposta.
+- Exclusão reaproveita o `ConfirmDialog` já existente (tone `danger`),
+  assim como a confirmação de regeneração de token (tone padrão).
+- Erros de qualquer mutação (nome duplicado, empresa com usuários ativos,
+  etc.) são exibidos via `Toast`, extraindo a mensagem do backend com o
+  mesmo helper `isAxiosError` usado no cancelamento de processo seletivo.
+
+**Testado no navegador** contra o backend real: acessei `/admin` como
+admin, a aba Empresas carregou as duas empresas cadastradas; editei o nome
+de "Mux Tech" para "Mux Tech LTDA" e a tabela atualizou sem reload; gerei
+um novo token e o modal exibiu a nova chave (confirmada batendo com a
+resposta de rede); tentei excluir "Mux Tech LTDA" (que tem usuário ativo)
+e o backend corretamente recusou com 403 "Não é possível deletar empresa
+com usuários ativos", exibido no Toast. Nenhuma mudança indevida foi
+persistida. Zero erros de console fora do 403 esperado do teste de
+exclusão bloqueada.
+
+### 10.9 Tooltips em ícones sem label e aba Usuários
+
+**Varredura de tooltips**: percorri todos os componentes que usam
+`lucide-react` procurando botões só-com-ícone sem `title`/`aria-label`.
+Adicionados nos que faltavam: baixar PDF e excluir (`CandidateTable`,
+`ResumeCard`), fechar (`Toast`, `Drawer`, `ConfirmDialog`), adicionar e
+remover tag (`TagListInput`), copiar token (`NewTokenDialog`), notificações
+(`Header`), e os três ícones de ação de `CompaniesTable` (que já tinham
+`aria-label` mas não `title` — sem `title` não existe tooltip visível no
+hover, só leitura de acessibilidade). Os botões que já tinham texto visível
+ao lado do ícone (ex.: "Cancelar processo seletivo", "Adicionar vaga") não
+precisavam de tooltip e foram deixados como estavam.
+
+**Aba Usuários** (dentro de Administração): reaproveita o módulo `user`
+que já existia no backend (create, listAll, updateStatus — nenhuma mudança
+de backend necessária, ao contrário de Empresas). Adicionados no frontend:
+- `types/user.ts`, `features/admin/users/api.ts`, 2 Route Handlers em
+  `app/api/admin/users/**` (GET+POST lista/criação, PATCH status), hooks
+  React Query (`useUsersQuery`, `useCreateUserMutation`,
+  `useUpdateUserStatusMutation`).
+- `UsersTable.tsx`: colunas Nome, E-mail, Empresa, Permissão, Status,
+  Criado em, e uma coluna de Ações com dois ícones — bloquear/ativar
+  (alterna `ACTIVE`↔`BLOCKED`) e excluir (soft delete para `DELETED`). O
+  botão de excluir fica desabilitado no próprio usuário logado (mesma regra
+  que o backend já aplicava — `ForbiddenException` — mas bloqueada também
+  na UI com tooltip explicando o motivo, evitando a viagem de rede
+  desnecessária).
+- `CreateUserDialog.tsx`: formulário com nome, e-mail, senha (mínimo 6
+  caracteres, via `PasswordInput`) e, conforme pedido, um **select com o
+  nome das empresas** (`useCompaniesQuery` reaproveitado da aba Empresas,
+  populando `<Select>` com `{value: company.id, label: company.name}` e
+  filtrando empresas já excluídas) em vez de exigir o UUID da empresa
+  digitado à mão. Select de permissão com as três roles do backend
+  (Administrador/Moderador/Recrutador).
+
+**Testado no navegador**: criei o usuário "Teste QA" selecionando "Mux Tech
+LTDA" pelo nome no select (POST 200, apareceu na tabela sem reload);
+bloqueei o mesmo usuário e o status mudou para "Bloqueado" ao vivo; conferi
+que o botão de excluir do próprio usuário logado (Paulo Paiva) está
+desabilitado com o tooltip "Você não pode excluir seu próprio usuário".
+Zero erros de console além do 403 esperado de um teste anterior de exclusão
+bloqueada.
+
+### 10.10 Ocultar usuários excluídos + exportação LGPD
+
+**Tabela de usuários**: agora filtra `status !== 'DELETED'` no cliente antes
+de montar as linhas do `TanStack Table` — usuários excluídos (soft delete)
+somem da listagem principal, mas continuam no banco (nada muda no
+backend aqui).
+
+**Exportação de usuários**: novo botão "Exportar usuários" ao lado de
+"Adicionar usuário", que baixa um CSV (`;` como separador e BOM UTF-8,
+formato que o Excel PT-BR abre corretamente com acentuação) com **todos**
+os usuários da base, inclusive bloqueados e excluídos — diferente da
+tabela, que só mostra os ativos/bloqueados no dia a dia.
+
+- Backend: `GET /api/v1/users/export` (`admin` only) — busca todos os
+  usuários (`findMany` sem filtro de status) e cruza com `AuditLog`
+  (`entityType: 'USER'`, `action: 'UPDATE_STATUS'`) para reconstruir,
+  por usuário, a última vez que o status virou `BLOCKED` e a última vez
+  que virou `DELETED`, junto com quem executou cada mudança
+  (`performedByName`). Nenhuma tabela nova — reaproveita o log de
+  auditoria que já existia.
+- Colunas do CSV: ID, Nome, E-mail, Empresa (ID e nome), Permissão, Status
+  atual, Data de cadastro, Última atualização, Data de bloqueio + quem
+  bloqueou, Data de exclusão + quem excluiu — cobrindo o que a LGPD exige
+  para prestar contas sobre tratamento e eliminação de dados pessoais
+  (quem processou, quando, e o histórico de mudanças de status de cada
+  titular).
+- Frontend: `exportUsers()` no `api.ts`, Route Handler
+  `app/api/admin/users/export`, `useExportUsersMutation` (mutation simples,
+  sem cache — é uma ação, não uma leitura) e `exportUsersToCsv()` que
+  monta o CSV (`lib/utils/csv.ts`, novo utilitário reutilizável) e dispara
+  o download via `Blob` + link temporário no navegador.
+
+**Testado no navegador**: confirmei que um usuário com status `DELETED`
+(criado e depois bloqueado/excluído durante os testes da feature
+anterior) sumiu da tabela de Usuários, mas apareceu completo na resposta
+de `/api/admin/users/export` com `blockedAt`/`blockedBy` e
+`deletedAt`/`deletedBy` preenchidos corretamente com o timestamp e o
+e-mail de quem executou cada ação. Cliquei no botão real "Exportar
+usuários" na UI e confirmei a chamada de rede 200 e o botão retornando ao
+estado normal após o download. `eslint`/`next build` e `tsc`/`nest build`
+limpos nos dois repos.
+
+### 10.11 Exportação de usuários em PDF + bloqueio de empresas
+
+**Exportação em PDF**: ao lado de "Exportar CSV", novo botão "Exportar
+PDF" que gera o mesmo conteúdo (todos os usuários, inclusive bloqueados e
+excluídos, com histórico de bloqueio/exclusão) num PDF timbrado com a
+marca Orm/Kyoris — faixa superior na cor primária da marca com o logo Orm
+(rasterizado do SVG para PNG via `<canvas>` no navegador, sem depender de
+plugin de SVG no jsPDF) e o nome "Kyoris Tech" (controlador dos dados),
+faixa inferior na cor de destaque com data de geração e numeração de
+página, repetidas em todas as páginas via o hook `didDrawPage` do
+`jspdf-autotable`. Bibliotecas novas: `jspdf` e `jspdf-autotable`
+(client-side, sem infraestrutura de geração de PDF no servidor).
+
+- `lib/utils/branding.ts`: paths do `OrmLogo` reaproveitados em uma
+  versão para fundo escuro (fill branco), cores da marca e o nome do
+  controlador (`Kyoris Tech`) centralizados aqui.
+- `lib/utils/pdf.ts`: `svgToPngDataUrl` (rasteriza o SVG via `Image` +
+  `canvas` em 2x para nitidez) e `hexToRgb` (jsPDF trabalha com RGB
+  numérico).
+- `features/admin/users/export.ts`: `exportUsersToPdf()`, paisagem A4,
+  mesmas 10 colunas do CSV.
+
+**Bloqueio de empresas**: `CompaniesTable` ganhou um quarto ícone de ação
+(bloquear/ativar, ao lado de editar nome/token/excluir), alternando entre
+`ACTIVE` e `BLOCKED` via o endpoint que já existia
+(`PATCH /companies/:id/status`) — nenhuma mudança de backend foi
+necessária, porque o `AuthService.login` **já** rejeitava login de
+empresas com `status !== 'ACTIVE'` desde a migração original (mensagem
+"Empresa inativa ou bloqueada"), então bastou expor essa capacidade na UI.
+Criado `useUpdateCompanyStatusMutation` (genérico, usado tanto para
+bloquear/ativar quanto para excluir, substituindo o hook dedicado
+`useDeleteCompanyMutation` que existia antes).
+
+**Testado**: bloqueei "Mux Tech LTDA" pela UI (PATCH 200, badge mudou para
+"Bloqueada" sem reload) e confirmei via `curl` direto no backend que um
+login com a `x-api-key` dessa empresa passou a retornar 403 "Empresa
+inativa ou bloqueada" imediatamente — depois reativei a empresa e
+confirmei que o status voltou a `ACTIVE`. Testei "Exportar PDF" na aba
+Usuários: a chamada de rede para `/admin/users/export` retornou 200, a
+geração assíncrona do PDF (rasterização do logo + tabela) terminou sem
+erros e o botão voltou ao estado normal, sem toast de erro.
+`eslint`/`next build` limpos (0 erros) nos dois repos.
+
+Nota de metodologia de teste: durante os testes anteriores desta sessão eu
+removia manualmente do DOM, via JS, modais que ficavam presos em
+`opacity: 0` (limitação conhecida do ambiente de teste com animações do
+Framer Motion, documentada na seção de Erros e Correções). Descobri que
+isso corrompe a árvore interna do React e trava cliques subsequentes no
+componente — a partir de agora, prefiro um reload de página a remover nós
+gerenciados pelo React diretamente.
+
+### 10.12 Filtro por empresa na aba Usuários
+
+Novo select "Empresa" acima da tabela de Usuários, com "Todas as
+empresas" + o nome de cada empresa cadastrada (reaproveitando
+`useCompaniesQuery`, mesma fonte de dados do select do formulário
+"Adicionar usuário"). Filtragem 100% client-side sobre os dados já
+carregados por `useUsersQuery` — sem nova chamada de rede a cada troca de
+empresa — combinada com o filtro de excluídos já existente (`status !==
+'DELETED'`). Mensagem de tabela vazia diferenciada quando o filtro está
+ativo ("Nenhum usuário para esta empresa.") do estado sem filtro nenhum
+("Nenhum usuário cadastrado ainda.").
+
+**Testado no navegador**: selecionei "Kyoris Tech" e a tabela passou a
+mostrar só o usuário dessa empresa; troquei para "Mux Tech LTDA" e
+mostrou só o usuário dela; voltei para "Todas as empresas" e os dois
+usuários reapareceram. `eslint`/`next build` limpos (0 erros).
+
+### 10.13 Select de empresa na mesma linha dos botões + aba Métricas
+
+**Layout**: o select "Empresa" da aba Usuários (seção 10.12) subiu para
+`UsersView`, na mesma linha flex dos botões de exportar/adicionar
+(`justify-between`, select à esquerda e botões à direita) em vez de ficar
+numa linha própria dentro de `UsersTable`. `UsersTable` agora recebe
+`companyFilter` como prop controlada em vez de gerenciar o próprio estado
+— `ALL_COMPANIES_VALUE` foi extraído para `features/admin/users/constants.ts`
+para ser compartilhado entre os dois componentes sem duplicar o valor
+sentinela.
+
+**Aba Métricas**: dashboard administrativo global (todas as empresas, ao
+contrário de "Relatórios" que é escopado à empresa do usuário logado),
+reaproveitando os mesmos componentes de gráfico
+(`ImportsTimelineChart`, `RankedBarChart`, `StatCard`) e a mesma lógica de
+`compute-metrics.ts` como base, estendida em
+`compute-admin-metrics.ts` com:
+- **Consumo de IA**: soma e média de `costBrl` (campo que já existia no
+  modelo `Resume` mas não era exibido em lugar nenhum do front) — direto
+  do backend, sem endpoint novo, reaproveitando `GET /resumes` que a rota
+  genérica `/api/resumes` já expõe (o backend já retorna todos os
+  currículos de todas as empresas para quem é `admin`, então nenhuma
+  mudança de backend foi necessária).
+- **Currículos por empresa**: novo gráfico de barras (`RankedBarChart`)
+  agrupando os currículos por `companyId`.
+- **Cards de empresas/usuários**: ativos vs. total e bloqueados,
+  calculados a partir dos dados já buscados por `useCompaniesQuery` e
+  `useUsersQuery` (nenhuma chamada de rede extra).
+- **Exportar relatório**: botão que gera um CSV com uma linha por empresa
+  (currículos importados, custo total e médio de IA, confiança média,
+  tempo médio de processamento) mais uma linha de total geral — dado
+  claramente acionável para acompanhar consumo/custo por cliente.
+
+**Testado no navegador**: acessei a aba Métricas em Administração e
+confirmei os números batendo com os dados reais (2 currículos, custo
+total e médio de IA corretos, 90% de confiança média, breakdown "Currículos
+por empresa" mostrando só Kyoris Tech, que é quem tem currículos
+importados). Cliquei em "Exportar relatório" e não houve toast de erro
+(download disparado). Confirmei visualmente via `getBoundingClientRect`
+que o select de empresa e o botão "Exportar CSV" da aba Usuários agora
+compartilham a mesma linha. `eslint`/`next build` limpos (0 erros).
+
+### 10.14 Select de período nas Métricas
+
+Novo select "Última semana / Últimos 15 dias / Último mês" (7/15/30 dias)
+no topo da aba Métricas, ao lado do botão "Exportar relatório". Diferente
+do gráfico de importações da versão anterior (que já tinha uma janela fixa
+de 14 dias só para o próprio gráfico), agora **todo** o dashboard —
+cards, gráfico de linha do tempo, breakdown por empresa, habilidades e
+escolaridade, e o CSV exportado — é recalculado sobre os currículos
+filtrados pelo período escolhido (`compute-admin-metrics.ts` agora recebe
+`periodDays` e filtra `createdAt >= hoje - periodDays` antes de qualquer
+agregação; os cards de empresas/usuários ativos continuam sendo
+snapshot do estado atual, não fazem sentido filtrados por período).
+`periodDays` também define quantos dias o gráfico de importações mostra,
+eliminando a constante fixa que existia antes.
+
+**Testado no navegador**: troquei entre as três opções e confirmei que o
+número de dias no eixo do gráfico muda (7, 15 ou 30 pontos) e que os
+títulos das seções ("Currículos por empresa (X dias)" etc.) refletem o
+período selecionado. Também confirmei — abrindo uma aba nova e limpa do
+navegador para descartar erros de console remanescentes de testes
+anteriores, que se mostraram ser apenas histórico obsoleto do harness de
+teste e não bugs reais — que a página carrega sem nenhum erro de console
+em qualquer um dos três períodos, e que "Exportar relatório" continua
+funcionando. `eslint`/`next build` limpos (0 erros) nos dois repos.
+
+### 10.15 Ciclo de vida de processos seletivos + métricas de recrutamento em Relatórios
+
+**Pesquisa**: KPIs que times de RH/recrutamento tipicamente acompanham em
+relatórios de processos seletivos — funil por status, taxa de conversão
+(contratações / processos abertos), tempo até a contratação
+("time-to-hire"), tamanho médio do pool de candidatos por processo, taxa
+de cancelamento e vagas com maior volume de candidatos — foram usados como
+base para a nova seção "Processos seletivos e candidatos" em Relatórios,
+calculados 100% a partir de dados já existentes (nenhuma tabela nova).
+
+**Backend**: `SelectionProcessStatus` deixou de ter só `OPEN`/`CLOSED` e
+passou a ter 4 estados: `OPEN` (em andamento), `CLOSED` (fechado sem
+contratação), `CANCELLED` (cancelado) e `CONCLUDED` (concluído com
+contratação). Como o botão de cancelar já existia e usava `CLOSED` para
+esse fim, rodei uma migração de dados
+(`prisma/migrations/.../reclassify_closed_as_cancelled`) reclassificando
+os registros `CLOSED` pré-existentes para `CANCELLED` — preservando o
+significado original — antes de `CLOSED` passar a significar outra coisa.
+Novos campos em `SelectionProcess`: `selectedResumeId` (+ relação
+`selectedResume`), `closedAt`, `cancelledAt`, `concludedAt`. Novos
+endpoints:
+- `PATCH /selection-processes/:id/close` — fecha sem selecionar candidato.
+- `PATCH /selection-processes/:id/conclude` — recebe `{ resumeId }`,
+  valida que o candidato pertence ao processo, grava `selectedResumeId`
+  + `concludedAt` e muda o status para `CONCLUDED`.
+Todas as transições (cancelar/fechar/concluir/adicionar candidato) agora
+exigem `status === 'OPEN'`, com mensagens de erro consistentes.
+
+**Frontend**:
+- `SelectionProcessDrawer`: quando `OPEN`, mostra três ações —
+  **Concluir processo** (abre `ConcludeSelectionProcessDialog`, novo
+  componente com seleção via rádio, novo componente de UI compartilhado
+  `Radio.tsx` já que o design system só tinha `Checkbox`), **Fechar
+  processo** e **Cancelar** (ambos com `ConfirmDialog`). Quando
+  `CONCLUDED`, mostra um card destacando o candidato escolhido e a data de
+  conclusão.
+- `SELECTION_PROCESS_STATUS_LABELS`/`TONES` centralizados em
+  `features/selection-processes/labels.ts` e reaproveitados em
+  `SelectionProcessesTable`, `SelectionProcessDrawer` e
+  `JobOpeningDrawer` (que tinha a mesma lógica de badge duplicada).
+- Relatórios (`MetricsView`) ganhou `RecruitmentMetricsSection`: cards de
+  processos abertos, taxa de conversão, tempo médio até a contratação,
+  candidatos por processo, taxa de cancelamento e contratações concluídas;
+  breakdown visual dos 4 status; gráfico de vagas com mais candidatos; e
+  uma lista das últimas contratações com nome do candidato, vaga e data.
+  O hook `useRecruitmentMetricsQuery` reaproveita a mesma query key de
+  `useSelectionProcessesQuery` (cache compartilhado — nenhuma requisição
+  duplicada entre a aba Processos Seletivos e Relatórios).
+
+**Testado no navegador**: confirmei que um processo cancelado antes desta
+mudança apareceu corretamente como "Cancelado" (migração de dados
+funcionou). Concluí "Vaga Front-end Senior" escolhendo "Daniela Ferreira"
+— o drawer passou a mostrar "Candidato escolhido: Daniela Ferreira" e a
+tabela atualizou para "Concluído" sem reload. Criei e fechei um processo
+via chamada direta à API para validar o fluxo de "Fechar processo"
+(`status: CLOSED`, `closedAt` preenchido) e confirmei "Fechado" na
+tabela. Na aba Relatórios, a nova seção mostrou números batendo com esse
+estado (3 processos, 33% de conversão, 67% de cancelamento, 1 contratação
+concluída, "Daniela Ferreira" em "Últimas contratações"). Zero erros de
+console em aba limpa do navegador. `eslint`/`next build` e
+`tsc`/`nest build` limpos (0 erros) nos dois repos.
+
+### 10.16 Encerrar processo seletivo também encerra a vaga vinculada
+
+Ao **concluir**, **fechar** ou **cancelar** um processo seletivo (qualquer
+uma das três formas de encerrá-lo), o backend agora verifica se a vaga
+vinculada (`jobOpeningId`) ainda tem algum outro processo **em
+andamento**. Se não tiver nenhum, a vaga publicada é automaticamente
+marcada como `CLOSED`. Essa checagem evita fechar uma vaga
+prematuramente quando ela tem mais de um processo seletivo ativo ao
+mesmo tempo — só fecha quando o último processo em andamento daquela
+vaga é encerrado.
+
+- `SelectionProcessService.closeLinkedJobOpeningIfNoOpenProcesses()`
+  (privado, reaproveitado pelos três métodos `cancel`/`close`/`conclude`):
+  busca a vaga, ignora se já está `CLOSED`, conta processos `OPEN`
+  restantes vinculados a ela e só então fecha.
+- Frontend: os três hooks de mutação de processo
+  (`useCancelSelectionProcessMutation`, `useCloseSelectionProcessMutation`,
+  `useConcludeSelectionProcessMutation`) passaram a invalidar também
+  `queryKeys.jobOpenings.all`, já que o status da vaga pode ter mudado
+  como efeito colateral. `SelectionProcessDrawer` ganhou um badge "Vaga
+  aberta"/"Vaga fechada" ao lado do nome da vaga vinculada, deixando esse
+  efeito visível sem precisar navegar até Vagas Publicadas.
+
+**Testado via API e no navegador**: criei um processo vinculado à vaga
+"Senior Frontend React Developer" e o concluí — a vaga passou de `OPEN`
+para `CLOSED` automaticamente. Testei o guard criando uma vaga nova com
+dois processos simultâneos: cancelar o primeiro manteve a vaga `OPEN`
+(o segundo processo ainda estava em andamento); só depois de cancelar o
+segundo também a vaga fechou. Confirmei na UI que "Vagas Publicadas"
+mostra "Fechada" para ambas as vagas de teste, e que o drawer do processo
+mostra o badge "Vaga fechada". Zero erros de console. `eslint`/`next
+build` e `tsc`/`nest build` limpos (0 erros) nos dois repos.

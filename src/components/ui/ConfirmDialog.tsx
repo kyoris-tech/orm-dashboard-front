@@ -46,7 +46,7 @@ function ConfirmDialogComponent({
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}
               className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-8 text-center relative"
             >
-              <button onClick={onCancel} className="absolute top-4 right-4 text-muted hover:text-accent transition">
+              <button onClick={onCancel} title="Fechar" aria-label="Fechar" className="absolute top-4 right-4 text-muted hover:text-accent transition">
                 <X size={20} />
               </button>
 

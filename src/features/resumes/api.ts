@@ -1,5 +1,5 @@
 import { httpClient } from '@/lib/http/client';
-import type { BulkUploadStartResponse, BulkUploadStatus, PaginatedResumes, ResumeSearchFilters, ResumeSummary } from '@/types/resumes';
+import type { BulkUploadStartResponse, BulkUploadStatus, PaginatedResumes, ResumeListItem, ResumeSearchFilters, ResumeSummary } from '@/types/resumes';
 
 export async function startBulkUpload(files: File[]): Promise<BulkUploadStartResponse> {
   const formData = new FormData();
@@ -20,6 +20,11 @@ export async function getBulkUploadStatus(jobId: string): Promise<BulkUploadStat
 export async function getRecentResumes(): Promise<ResumeSummary[]> {
   const { data } = await httpClient.get<{ resumes: ResumeSummary[] }>('/resumes/recent');
   return data.resumes ?? [];
+}
+
+export async function getCompanyResumes(): Promise<ResumeListItem[]> {
+  const { data } = await httpClient.get<{ data: ResumeListItem[] }>('/resumes/company');
+  return data.data ?? [];
 }
 
 export async function searchResumes(filters: ResumeSearchFilters): Promise<PaginatedResumes> {

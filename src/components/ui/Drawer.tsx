@@ -33,7 +33,7 @@ export function Drawer({ isOpen, onClose, title, children }: DrawerProps) {
             >
               <div className="flex items-center justify-between px-6 py-5 border-b border-border">
                 {title && <h2 className="text-lg font-semibold text-primary">{title}</h2>}
-                <button onClick={onClose} className="text-muted hover:text-accent transition ml-auto">
+                <button onClick={onClose} title="Fechar" aria-label="Fechar" className="text-muted hover:text-accent transition ml-auto">
                   <X size={20} />
                 </button>
               </div>

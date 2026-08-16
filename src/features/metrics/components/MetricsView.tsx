@@ -6,6 +6,7 @@ import { ImportsTimelineChart } from '@/components/ui/charts/ImportsTimelineChar
 import { RankedBarChart } from '@/components/ui/charts/RankedBarChart';
 import { Text } from '@/components/ui/Text';
 import { useResumesMetricsQuery } from '../hooks/use-resumes-metrics-query';
+import { RecruitmentMetricsSection } from './RecruitmentMetricsSection';
 
 export function MetricsView() {
   const metricsQuery = useResumesMetricsQuery();
@@ -70,6 +71,8 @@ export function MetricsView() {
           <RankedBarChart items={metrics.educationBreakdown} emptyMessage="Nenhuma informação de escolaridade extraída ainda." />
         </div>
       </div>
+
+      <RecruitmentMetricsSection />
     </div>
   );
 }

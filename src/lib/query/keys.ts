@@ -4,6 +4,8 @@ export const queryKeys = {
     recent: () => [...queryKeys.resumes.all, 'recent'] as const,
     list: <TFilters extends object>(filters: TFilters) => [...queryKeys.resumes.all, 'list', filters] as const,
     metricsSummary: () => [...queryKeys.resumes.all, 'metrics-summary'] as const,
+    company: () => [...queryKeys.resumes.all, 'company'] as const,
+    adminMetrics: () => [...queryKeys.resumes.all, 'admin-metrics'] as const,
   },
   selectionProcesses: {
     all: ['selection-processes'] as const,
@@ -14,5 +16,13 @@ export const queryKeys = {
     all: ['job-openings'] as const,
     list: () => [...queryKeys.jobOpenings.all, 'list'] as const,
     detail: (id: string) => [...queryKeys.jobOpenings.all, 'detail', id] as const,
+  },
+  companies: {
+    all: ['companies'] as const,
+    list: () => [...queryKeys.companies.all, 'list'] as const,
+  },
+  users: {
+    all: ['users'] as const,
+    list: () => [...queryKeys.users.all, 'list'] as const,
   },
 };

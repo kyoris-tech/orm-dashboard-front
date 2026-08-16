@@ -49,6 +49,8 @@ export function TagListInput({ label, values, onChange, placeholder }: TagListIn
         <button
           type="button"
           onClick={addValue}
+          title="Adicionar"
+          aria-label="Adicionar"
           className="w-11 h-11 flex items-center justify-center rounded-full bg-accent text-white hover:bg-accent-dark transition shrink-0"
         >
           <Plus size={18} />
@@ -63,7 +65,13 @@ export function TagListInput({ label, values, onChange, placeholder }: TagListIn
               className="flex items-center gap-1 bg-surface-soft border border-border text-foreground text-sm rounded-full pl-3 pr-1 py-1"
             >
               {value}
-              <button type="button" onClick={() => removeValue(index)} className="text-muted hover:text-danger transition p-1">
+              <button
+                type="button"
+                onClick={() => removeValue(index)}
+                title="Remover"
+                aria-label={`Remover ${value}`}
+                className="text-muted hover:text-danger transition p-1"
+              >
                 <X size={12} />
               </button>
             </span>

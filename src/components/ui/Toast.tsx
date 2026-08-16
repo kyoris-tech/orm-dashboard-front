@@ -21,7 +21,7 @@ export function Toast({ message, actionLabel, onAction, onDismiss }: ToastProps)
       )}
 
       {onDismiss && (
-        <button onClick={onDismiss} className="text-muted hover:text-foreground transition p-1">
+        <button onClick={onDismiss} title="Fechar" aria-label="Fechar" className="text-muted hover:text-foreground transition p-1">
           <X size={16} />
         </button>
       )}
