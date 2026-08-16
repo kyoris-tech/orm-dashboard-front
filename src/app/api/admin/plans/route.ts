@@ -11,10 +11,10 @@ export async function GET() {
   }
 
   try {
-    const { data } = await backendClient.get('/companies', withBearerToken(token));
+    const { data } = await backendClient.get('/admin/plans', withBearerToken(token));
     return NextResponse.json(data);
   } catch (error) {
-    return forwardAxiosError(error, 'Não foi possível carregar as empresas.');
+    return forwardAxiosError(error, 'Não foi possível carregar os planos.');
   }
 }
 
@@ -28,9 +28,9 @@ export async function POST(request: Request) {
   const body = await request.json();
 
   try {
-    const { data } = await backendClient.post('/companies', body, withBearerToken(token));
+    const { data } = await backendClient.post('/admin/plans', body, withBearerToken(token));
     return NextResponse.json(data);
   } catch (error) {
-    return forwardAxiosError(error, 'Não foi possível cadastrar a empresa.');
+    return forwardAxiosError(error, 'Não foi possível criar o plano.');
   }
 }

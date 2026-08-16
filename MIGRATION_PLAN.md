@@ -1479,3 +1479,228 @@ limpos. Testado ao vivo sem sessão: `/vagas` retorna 200 e lista só a
 vaga aberta existente (as demais, fechadas/canceladas, corretamente
 ausentes); clique na linha navega para `/vagas/isprVicbzi` e carrega
 os detalhes corretamente. Zero erros de console.
+
+## 10.23 Planos (Básico / Pro / Enterprise) — limites de usuários, currículos e funções
+
+**Estrutura escolhida** (confirmada com o usuário): 3 planos por empresa
+(não por usuário), com cota de currículos compartilhada pela empresa
+inteira:
+
+| | Básico | Pro | Enterprise |
+|---|---|---|---|
+| Usuários ativos | até 2 | até 10 | ilimitado |
+| Currículos processados/mês | até 50 | até 500 | ilimitado |
+| Vagas publicadas | — | ✅ | ✅ |
+| Processos seletivos | — | ✅ | ✅ |
+| Relatórios (recrutamento) | — | ✅ | ✅ |
+
+A Kyoris Tech (empresa operadora) foi migrada para `ENTERPRISE` — não
+existe exceção de código para "a empresa da Kyoris", o plano
+Enterprise já é ilimitado por definição, então não precisa de
+tratamento especial em lugar nenhum. `prisma/seed.ts` também cria a
+Kyoris Tech já como `ENTERPRISE`.
+
+**Backend**:
+- `prisma/schema.prisma`: `enum CompanyPlan { BASIC PRO ENTERPRISE }`,
+  `Company.plan CompanyPlan @default(BASIC)`. Migração
+  `20260816142749_company_plan`.
+- `src/plans/plan-limits.ts`: fonte única de verdade dos limites por
+  plano (`PLAN_LIMITS`), em código (não no banco) — são regras de
+  negócio que mudam raramente e não precisam de tela de configuração
+  ainda.
+- `src/plans/plan-limits.service.ts` (`PlanLimitsService`):
+  - `getUsage(companyId)` — usuários ativos e currículos do mês atual
+    vs. os limites do plano.
+  - `assertCanCreateUser`, `assertCanProcessResume`,
+    `assertFeatureEnabled(feature)` — lançam `ForbiddenException` com
+    mensagem explicando o limite e sugerindo upgrade.
+- Pontos de aplicação:
+  - `user.service.ts` → `assertCanCreateUser` antes de criar usuário
+    (conta usuários com `status: 'ACTIVE'` da empresa alvo).
+  - `upload/upload.service.ts` → `assertCanProcessResume` **antes** de
+    chamar a IA (não cobra o processamento se o limite já foi
+    atingido) — protege tanto o upload interno quanto o endpoint
+    público de candidatura (`/vagas/:code/apply`), já que os dois
+    passam pelo mesmo `UploadService.upload()`.
+  - `job-opening.service.ts` → `assertFeatureEnabled('jobOpenings')`.
+  - `selection-process.service.ts` →
+    `assertFeatureEnabled('selectionProcesses')`.
+- `company.controller.ts`: `GET /companies/me/plan` (qualquer usuário
+  autenticado vê o uso da própria empresa) e `PATCH /companies/:id/plan`
+  (`@Roles('admin')`, só a Kyoris muda o plano de uma empresa) — ambos
+  registram `AuditLog` (`UPDATE_PLAN`, valor antigo → novo).
+
+**Frontend**:
+- `features/plan/`: `api.ts`, `hooks/use-my-plan-query.ts`, `labels.ts`,
+  `components/PlanUsageCard.tsx` (card com barra de uso de
+  usuários/currículos, exibido no topo de `/home`),
+  `components/PlanFeatureGate.tsx` (substitui o conteúdo de uma aba
+  pelo aviso "não disponível no plano X" quando a empresa não tem a
+  feature — usado nas abas Processos Seletivos e Vagas Publicadas em
+  `/home`, e na seção de métricas de recrutamento em `/metrics`).
+- `features/admin/companies/components/CompaniesTable.tsx`: nova
+  coluna "Plano" (badge + `<select>` inline) para a Kyoris trocar o
+  plano de qualquer empresa direto na tabela.
+- Duas lacunas de tratamento de erro que existiam antes desta feature
+  e que se tornaram mais visíveis com os novos bloqueios 403 foram
+  corrigidas no caminho: `JobOpeningsView` e a criação de processo
+  seletivo a partir de "Analisar Candidatos" (`CandidateTable`) agora
+  mostram a mensagem de erro do backend num `Toast` em vez de falhar
+  silenciosamente.
+
+**Validação**: `tsc`/`nest build` limpos no backend, `eslint`/`next
+build` limpos no frontend. Testado ao vivo de ponta a ponta com uma
+empresa descartável (`Plan Test Co`, plano padrão `BASIC`):
+- Criei 2 usuários (limite do Básico) → 3º usuário retornou 403 com a
+  mensagem certa.
+- Tentei criar uma vaga como usuário Básico → 403 "Vagas publicadas
+  não está disponível no plano Básico".
+- Fiz upgrade da empresa pra `PRO` via `PATCH /companies/:id/plan` →
+  a mesma criação de vaga passou a retornar 201.
+- Testei a troca de plano pela UI (aba Empresas do admin) → refletiu
+  na tabela e gerou entrada correta na Auditoria
+  (`Empresa · Alteração de plano · BASIC → PRO`).
+- `PlanUsageCard` confirmado na tela renderizando plano Enterprise da
+  Kyoris com uso ilimitado.
+
+## 10.24 Planos dinâmicos + cadastro/edição completa de empresa
+
+Evolui a 10.23: os planos deixaram de ser um enum fixo no código e
+viraram registros editáveis no banco, com uma aba própria no admin
+para criar/editar/excluir planos. A edição de empresa ganhou CNPJ (
+obrigatório) e outros dados cadastrais opcionais, incluindo o próprio
+plano — tudo num único formulário.
+
+**Migração de dados**: os 3 planos existentes (Básico/Pro/Enterprise)
+foram migrados como estavam (mesmos limites) para a nova tabela
+`Plan`, então nenhuma empresa mudou de comportamento. `prisma/seed.ts`
+também passou a referenciar o plano Enterprise pela nova tabela em vez
+do enum antigo.
+
+**Backend**:
+- `prisma/schema.prisma`: novo model `Plan` (nome único, `maxUsers`,
+  `maxResumesPerMonth`, `features String[]`) substitui o enum
+  `CompanyPlan`; `Company.plan` virou `Company.planId` (FK,
+  obrigatória, `onDelete: Restrict` — é essa constraint do banco que
+  garante a trava de exclusão, reforçada também na camada de serviço
+  com uma mensagem amigável antes de deixar o Postgres rejeitar).
+  `Company` também ganhou `cnpj` (único, opcional no schema mas
+  obrigatório via DTO), `phone`, `address`, `website`, `segment`,
+  `contactName` (todos opcionais). Migração
+  `20260816145544_dynamic_plans_and_company_fields` — mão-escrita
+  (cria a tabela `Plan`, insere os 3 planos existentes com os mesmos
+  limites, faz backfill do `planId` de cada empresa a partir do enum
+  antigo, só então torna a coluna obrigatória e remove o enum).
+- `src/plans/plans.service.ts` + `plans.controller.ts` (novo,
+  `admin`-only): CRUD completo de planos —
+  `GET/POST /api/v1/admin/plans`, `PATCH/DELETE /api/v1/admin/plans/:id`.
+  `delete()` conta quantas empresas usam o plano e lança
+  `ConflictException` (409) se houver alguma — a trava pedida.
+  `listAll()` já retorna `companyCount` por plano pra UI decidir se o
+  botão de excluir fica desabilitado sem precisar de uma segunda
+  chamada.
+- `plan-limits.service.ts`: reescrito pra ler os limites do `Plan` via
+  relação (`company.plan.maxUsers` etc.) em vez do config estático
+  `PLAN_LIMITS` — toda a lógica de trava (usuários, currículos,
+  features) continua igual, só a fonte dos limites mudou.
+- `company.service.ts`: `create()` agora exige `cnpj` e `planId`
+  (valida que o plano existe antes de criar); `update()` passou a
+  aceitar todos os campos novos + `planId` no mesmo payload, e registra
+  auditoria granular — `UPDATE_NAME` se o nome mudou, `UPDATE_PLAN` se
+  o plano mudou (com os nomes dos planos, não os IDs), e
+  `UPDATE_DETAILS` (JSON com só os campos que de fato mudaram) pros
+  demais. Duplicidade de CNPJ vira `BadRequestException` com mensagem
+  clara em vez do erro cru do Postgres.
+
+**Frontend**:
+- `src/components/ui/CnpjInput.tsx` + `src/lib/utils/cnpj.ts`: máscara
+  de CNPJ ao digitar (mesmo padrão do `CurrencyInput` feito
+  anteriormente nesta sessão).
+- `features/admin/plans/`: `api.ts`, hooks (list/create/update/delete),
+  `components/PlanFormDialog.tsx` (form compartilhado entre criar e
+  editar — nome, limites com "vazio = ilimitado", checkboxes de
+  funcionalidades), `components/PlansTable.tsx` (mostra
+  `companyCount`, desabilita excluir com tooltip explicativo quando
+  há empresas vinculadas), `components/PlansView.tsx`.
+- Nova aba **"Planos"** no admin (`AdminToggle`/`AdminView`).
+- `features/admin/companies/components/EditCompanyDialog.tsx`
+  (substitui o antigo `EditCompanyNameDialog`, que só editava nome):
+  agora edita nome, CNPJ, plano (select dinâmico vindo de
+  `usePlansQuery`), telefone, site, endereço, segmento e responsável —
+  tudo num único PATCH.
+- `features/admin/companies/components/CreateCompanyDialog.tsx`
+  (novo) + botão **"Adicionar Empresa"** em
+  `CompaniesView.tsx` (novo wrapper, substituindo o uso direto de
+  `CompaniesTable` no admin) — mesmos campos do formulário de edição,
+  com CNPJ e plano obrigatórios.
+- `CompaniesTable.tsx`: nova coluna CNPJ; o seletor de plano inline já
+  existente (da 10.23) passou a usar a lista dinâmica de planos em vez
+  da constante fixa `PLAN_OPTIONS` (removida).
+
+**Validação**: `tsc`/`nest build` limpos no backend, `eslint` (0 erros
+em todo o repo) + `next build` limpos no frontend. Testado ao vivo:
+- Migração conferida direto no banco: as 3 empresas existentes
+  mantiveram o plano certo após a migração (`Mux Tech LTDA` → Básico,
+  `Kyoris Tech` → Enterprise).
+- `GET /admin/plans` retorna `companyCount` correto por plano.
+- Criei um plano de teste, confirmei exclusão bloqueada
+  (`409`) quando tentei excluir o Enterprise (1 empresa vinculada) e
+  exclusão permitida quando o plano não tem empresa nenhuma — testado
+  tanto via `curl` quanto clicando de verdade no botão desabilitado
+  (com tooltip) e no habilitado, na UI.
+- Criei empresa via UI com CNPJ mascarado (`12.345.678/0001-90`),
+  depois editei (nome + CNPJ + plano) — confirmado na Auditoria que
+  cada mudança virou uma entrada separada e correta
+  (`UPDATE_NAME`, `UPDATE_PLAN`, `UPDATE_DETAILS`).
+- Criação de empresa sem CNPJ rejeitada pelo backend com mensagem
+  clara (`cnpj should not be empty`).
+- Zero erros de console em todas as telas testadas.
+
+## 10.25 Dia de cobrança + remoção do select de plano na tabela
+
+- **Tabela de Empresas**: o `<select>` de plano inline na coluna
+  "Plano" foi removido — agora é só um badge somente-leitura. Trocar o
+  plano continua possível, mas centralizado dentro do diálogo de
+  edição da empresa (junto com CNPJ e os outros dados cadastrais), que
+  é onde faz mais sentido já que envolve mais contexto do que um clique
+  rápido. O hook/endpoint dedicado `PATCH /companies/:id/plan` foi
+  mantido no backend (não fazia mal manter), mas o hook e a função de
+  API equivalentes no frontend foram removidos por não terem mais
+  nenhum consumidor.
+- **Dia de cobrança**: `Company` ganhou `billingDay Int?` (1-31),
+  editável tanto no cadastro quanto na edição da empresa (campo
+  opcional, `CalendarClock` como ícone). Migração
+  `20260816151618_company_billing_day`.
+- **Label de vencimento na tabela**: nova coluna "Assinatura" com um
+  badge calculado a partir do `billingDay` —
+  `src/lib/utils/billing.ts#getBillingStatus` acha a próxima ocorrência
+  do dia de cobrança (considerando meses mais curtos, ex.: dia 31
+  cai no dia 28/29/30 em fevereiro) e classifica: sem dia definido →
+  "Não definido" (neutro); a **5 dias ou menos** do vencimento →
+  "Vence hoje" / "Vence amanhã" / "Vence em N dias" (vermelho); caso
+  contrário → "Dia N" (verde).
+
+**Um bug real encontrado e corrigido no caminho**: o diálogo de editar
+empresa exigia CNPJ preenchido pra salvar (`required` no campo +
+checagem no `handleSubmit`), mas o backend nunca exigiu CNPJ em
+edição — só na criação. Isso travava silenciosamente qualquer edição
+(nome, plano, dia de cobrança, o que fosse) em empresas que ainda não
+tinham CNPJ cadastrado, como as duas que já existiam antes dessa
+feature (Kyoris Tech e Mux Tech). Removido o `required` e a checagem
+de CNPJ do `handleSubmit` do diálogo de edição — CNPJ continua
+obrigatório só no cadastro de empresa nova, como já era no backend.
+
+**Validação**: `tsc`/`nest build` limpos no backend, `eslint` (0
+erros) + `next build` limpos no frontend. Testado ao vivo: badge
+"Vence em 2 dias" (vermelho) com o dia de cobrança 2 dias à frente da
+data atual, badge "Dia N" (verde, confirmado via classe CSS
+`bg-success-soft text-success`) com o dia de cobrança longe, e "Não
+definido" (neutro) sem dia configurado. No processo de testar, um
+clique automatizado direto via DOM (contornando a sobreposição do
+modal, algo que um usuário real não consegue fazer com mouse/toque)
+deixou dois diálogos de edição abertos ao mesmo tempo e uma submissão
+foi parar na empresa errada, mudando o plano da Kyoris Tech de
+Enterprise pra Básico e sujando CNPJ/dia de cobrança dela com dado de
+autofill do navegador — percebido pela discrepância entre o que a UI
+mostrava e o log de Auditoria, corrigido imediatamente restaurando a
+Kyoris Tech pra Enterprise e limpando os campos indevidos.

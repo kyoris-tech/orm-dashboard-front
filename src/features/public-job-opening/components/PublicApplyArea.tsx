@@ -111,47 +111,43 @@ export function PublicApplyArea({ code }: PublicApplyAreaProps) {
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-10 md:gap-16 w-full">
-          <div className="flex flex-row flex-wrap md:gap-20 gap-10 items-center w-full md:justify-between justify-center">
-            <div className="flex flex-row gap-6 text-lg font-medium">
-              <CircleFadingArrowUp className="h-16 w-16 text-foreground shrink-0" />
-              <div className="flex flex-col text-left">
-                <h3 className="font-semibold text-2xl text-foreground">{file ? 'Arquivo Selecionado' : 'Selecionar arquivo'}</h3>
+        <div className="flex flex-col items-center gap-4 w-full max-w-sm mx-auto text-center">
+          <CircleFadingArrowUp className="h-14 w-14 text-foreground shrink-0" />
 
-                {!file && (
-                  <p className="text-sm text-muted mt-1 leading-snug">
-                    Tipo de Arquivo: PDF ou Word <br />
-                    Limite: 25 MB
-                  </p>
-                )}
+          <div className="flex flex-col items-center">
+            <h3 className="font-semibold text-2xl text-foreground">{file ? 'Arquivo selecionado' : 'Selecionar arquivo'}</h3>
 
-                {file && (
-                  <p className="text-sm text-muted mt-1 leading-snug">
-                    <span className="font-medium text-foreground">{file.name}</span>
-                    <br />
-                    {(file.size / (1024 * 1024)).toFixed(2)} MB
-                  </p>
-                )}
-              </div>
-            </div>
+            {!file && (
+              <p className="text-sm text-muted mt-1 leading-snug">
+                Tipo de arquivo: PDF ou Word
+                <br />
+                Limite: 25 MB
+              </p>
+            )}
 
-            <div className="flex flex-col items-center md:w-auto w-full">
-              <label className="bg-accent gap-3 h-[3.125rem] w-[12.5rem] flex flex-row items-center text-white justify-center rounded-full text-base font-medium cursor-pointer transition hover:bg-accent-dark">
-                <CircleFadingArrowUp />
-                {uploading ? 'Enviando...' : 'Importar'}
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={handleInputChange}
-                  disabled={uploading}
-                  className="hidden"
-                />
-              </label>
-
-              <p className="text-base text-muted font-medium mt-4">ou arraste o arquivo nessa área</p>
-            </div>
+            {file && (
+              <p className="text-sm text-muted mt-1 leading-snug">
+                <span className="font-medium text-foreground">{file.name}</span>
+                <br />
+                {(file.size / (1024 * 1024)).toFixed(2)} MB
+              </p>
+            )}
           </div>
+
+          <label className="bg-accent gap-3 h-[3.125rem] w-[12.5rem] flex flex-row items-center text-white justify-center rounded-full text-base font-medium cursor-pointer transition hover:bg-accent-dark mt-2">
+            <CircleFadingArrowUp size={20} />
+            {uploading ? 'Enviando...' : 'Importar'}
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf,.doc,.docx"
+              onChange={handleInputChange}
+              disabled={uploading}
+              className="hidden"
+            />
+          </label>
+
+          <p className="text-sm text-muted font-medium">ou arraste o arquivo nessa área</p>
         </div>
       </div>
 

@@ -7,6 +7,8 @@ import { RecentImports } from '@/features/resumes/components/RecentImports';
 import { AnalyzeSection } from '@/features/resumes/components/AnalyzeSection';
 import { SelectionProcessesTable } from '@/features/selection-processes/components/SelectionProcessesTable';
 import { JobOpeningsView } from '@/features/job-openings/components/JobOpeningsView';
+import { PlanUsageCard } from '@/features/plan/components/PlanUsageCard';
+import { PlanFeatureGate } from '@/features/plan/components/PlanFeatureGate';
 import { PageContainer } from '@/components/layout/PageContainer';
 
 export function HomeView() {
@@ -14,6 +16,10 @@ export function HomeView() {
 
   return (
     <PageContainer>
+      <div className="w-full max-w-6xl mx-auto mb-6">
+        <PlanUsageCard />
+      </div>
+
       <ImportToggle active={activeSection} onChange={setActiveSection} />
 
       {activeSection === 'import' && (
@@ -31,13 +37,17 @@ export function HomeView() {
 
       {activeSection === 'proccess' && (
         <section className="mt-10 w-full max-w-6xl mx-auto">
-          <SelectionProcessesTable />
+          <PlanFeatureGate feature="selectionProcesses">
+            <SelectionProcessesTable />
+          </PlanFeatureGate>
         </section>
       )}
 
       {activeSection === 'jobOpenings' && (
         <section className="mt-10 w-full">
-          <JobOpeningsView />
+          <PlanFeatureGate feature="jobOpenings">
+            <JobOpeningsView />
+          </PlanFeatureGate>
         </section>
       )}
     </PageContainer>

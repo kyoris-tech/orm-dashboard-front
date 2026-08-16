@@ -9,13 +9,14 @@ import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils/date';
+import { getBillingStatus } from '@/lib/utils/billing';
 import { useCompaniesQuery } from '../hooks/use-companies-query';
-import { useUpdateCompanyNameMutation } from '../hooks/use-update-company-name-mutation';
+import { useUpdateCompanyDetailsMutation } from '../hooks/use-update-company-details-mutation';
 import { useUpdateCompanyStatusMutation } from '../hooks/use-update-company-status-mutation';
 import { useRegenerateCompanyTokenMutation } from '../hooks/use-regenerate-company-token-mutation';
-import { EditCompanyNameDialog } from './EditCompanyNameDialog';
+import { EditCompanyDialog } from './EditCompanyDialog';
 import { NewTokenDialog } from './NewTokenDialog';
-import type { CompanySummary, CompanyStatus } from '@/types/company';
+import type { CompanySummary, CompanyStatus, UpdateCompanyInput } from '@/types/company';
 
 const STATUS_LABELS: Record<CompanyStatus, string> = {
   ACTIVE: 'Ativa',
@@ -47,7 +48,7 @@ const columnHelper = createColumnHelper<CompanySummary>();
 
 export function CompaniesTable() {
   const companiesQuery = useCompaniesQuery();
-  const updateNameMutation = useUpdateCompanyNameMutation();
+  const updateDetailsMutation = useUpdateCompanyDetailsMutation();
   const updateStatusMutation = useUpdateCompanyStatusMutation();
   const regenerateTokenMutation = useRegenerateCompanyTokenMutation();
 
@@ -58,13 +59,13 @@ export function CompaniesTable() {
   const [newToken, setNewToken] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  function handleUpdateName(name: string) {
+  function handleUpdateDetails(input: UpdateCompanyInput) {
     if (!editingCompany) {
       return;
     }
 
-    updateNameMutation.mutate(
-      { id: editingCompany.id, name },
+    updateDetailsMutation.mutate(
+      { id: editingCompany.id, input },
       {
         onSuccess: () => setEditingCompany(null),
         onError: (error) => setErrorMessage(extractErrorMessage(error)),
@@ -120,9 +121,25 @@ export function CompaniesTable() {
     () => [
       columnHelper.accessor('name', { header: 'Nome' }),
       columnHelper.accessor('email', { header: 'E-mail' }),
+      columnHelper.accessor('cnpj', {
+        header: 'CNPJ',
+        cell: (info) => info.getValue() || 'N/A',
+      }),
       columnHelper.accessor('status', {
         header: 'Status',
         cell: (info) => <Badge tone={STATUS_TONES[info.getValue()]}>{STATUS_LABELS[info.getValue()]}</Badge>,
+      }),
+      columnHelper.accessor((row) => row.plan.name, {
+        id: 'plan',
+        header: 'Plano',
+        cell: (info) => <Badge tone="accent">{info.getValue()}</Badge>,
+      }),
+      columnHelper.accessor('billingDay', {
+        header: 'Assinatura',
+        cell: (info) => {
+          const billing = getBillingStatus(info.getValue());
+          return <Badge tone={billing.tone}>{billing.label}</Badge>;
+        },
       }),
       columnHelper.accessor('createdAt', {
         header: 'Criada em',
@@ -144,9 +161,9 @@ export function CompaniesTable() {
                   setEditingCompany(company);
                 }}
                 disabled={isDeleted}
-                title="Editar nome"
+                title="Editar empresa"
                 className="text-muted hover:text-accent transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                aria-label="Editar nome"
+                aria-label="Editar empresa"
               >
                 <Pencil size={16} />
               </button>
@@ -215,11 +232,11 @@ export function CompaniesTable() {
         emptyMessage="Nenhuma empresa cadastrada ainda."
       />
 
-      <EditCompanyNameDialog
+      <EditCompanyDialog
         isOpen={Boolean(editingCompany)}
         company={editingCompany}
-        isSubmitting={updateNameMutation.isPending}
-        onSubmit={handleUpdateName}
+        isSubmitting={updateDetailsMutation.isPending}
+        onSubmit={handleUpdateDetails}
         onCancel={() => setEditingCompany(null)}
       />
 

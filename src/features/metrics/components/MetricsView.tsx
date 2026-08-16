@@ -7,6 +7,7 @@ import { RankedBarChart } from '@/components/ui/charts/RankedBarChart';
 import { Text } from '@/components/ui/Text';
 import { useResumesMetricsQuery } from '../hooks/use-resumes-metrics-query';
 import { RecruitmentMetricsSection } from './RecruitmentMetricsSection';
+import { PlanFeatureGate } from '@/features/plan/components/PlanFeatureGate';
 
 export function MetricsView() {
   const metricsQuery = useResumesMetricsQuery();
@@ -72,7 +73,9 @@ export function MetricsView() {
         </div>
       </div>
 
-      <RecruitmentMetricsSection />
+      <PlanFeatureGate feature="reports">
+        <RecruitmentMetricsSection />
+      </PlanFeatureGate>
     </div>
   );
 }

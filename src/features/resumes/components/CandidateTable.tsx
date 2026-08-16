@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { isAxiosError } from 'axios';
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -54,6 +55,16 @@ function compatibilityTone(value: number): string {
   return 'bg-border !text-muted';
 }
 
+const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir esta ação.';
+
+function extractErrorMessage(error: unknown): string {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
+  }
+
+  return DEFAULT_ERROR_MESSAGE;
+}
+
 const columnHelper = createColumnHelper<CandidateRow>();
 
 export function CandidateTable({ filters, onPageChange, onSelectionProcessCreated }: CandidateTableProps) {
@@ -65,6 +76,7 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
   const [selectedResume, setSelectedResume] = useState<ResumeListItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
   const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
   const [isCreateProcessOpen, setIsCreateProcessOpen] = useState(false);
 
@@ -217,6 +229,7 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
           setIsCreateProcessOpen(false);
           onSelectionProcessCreated?.();
         },
+        onError: (error) => setActionErrorMessage(extractErrorMessage(error)),
       },
     );
   }
@@ -289,6 +302,8 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
       />
 
       <ResumeModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} resume={selectedResume} />
+
+      {actionErrorMessage && <Toast message={actionErrorMessage} onDismiss={() => setActionErrorMessage(null)} />}
     </div>
   );
 }
