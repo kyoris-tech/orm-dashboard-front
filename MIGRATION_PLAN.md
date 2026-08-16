@@ -1739,3 +1739,21 @@ Kyoris Tech pra Enterprise e limpando os campos indevidos.
 
 - Adicionado um link "Desenvolvido pela Kyoris Tech" (`target="_blank"`, `rel="noopener noreferrer"`) apontando para `https://kyoristech.com`, abaixo do "Orm. All rights reserved" em ambos os rodapés: o rodapé global (`src/components/layout/Footer.tsx`, usado em todas as páginas exceto `/`) e o rodapé da landing (`LandingView.tsx`, seção "Conheça a Orm").
 - Validado: `eslint`, `tsc --noEmit` e `next build` limpos; conferido em `/` e em `/vagas` que o link existe, aponta para o domínio correto e abre em nova aba.
+
+## 10.30 Planos da landing revertidos para os nomes/valores reais decididos
+
+- A seção "Planos" da landing (`/`) tinha ido para "Easy/Company/Business" com preços copiados de um mockup enviado, que nunca foram confirmados como valores finais. Revertido para os planos e limites de fato decididos e já em produção na tabela `Plan` (seção 10.23): **Básico** (até 2 usuários, até 50 currículos/mês, sem Vagas publicadas/Processos seletivos/Relatórios), **Pro** (até 10 usuários, até 500 currículos/mês, com as 3 funcionalidades, destacado como "Mais popular") e **Enterprise** (ilimitado, com as 3 funcionalidades).
+- Removidos: `PricingToggle.tsx` (toggle Anual/Mensal) e o conteúdo antigo de `PricingCard.tsx`/`PRICED_PLANS`/`ENTERPRISE_PLAN` (preços fictícios). `content.ts` voltou a exportar `PLAN_COPY`/`ALL_PLAN_FEATURES`, iguais aos usados antes do mockup.
+- Novo `PlanCard.tsx` mantém o visual com corte no topo (herdado do redesign anterior) mas com o conteúdo real: rótulos de usuários/currículos + checklist de funcionalidades (reaproveitando `FEATURE_LABELS`) + "Assinar Plano" → `/login`. Sem exibir valores em R$, já que não há preço decidido — mantida a chamada "Fale com a nossa equipe para conhecer os valores de cada plano."
+- Validado: `eslint`, `tsc --noEmit` e `next build` limpos; conferido numa aba nova sem erros de console, com Básico/Pro/Enterprise e os limites corretos renderizando.
+
+## 10.31 Crédito de design no rodapé
+
+- Adicionada uma segunda linha de crédito abaixo de "Desenvolvido pela Kyoris Tech": "Design e Direção de arte por Evelin Monteiro", linkando para `https://www.linkedin.com/in/eveone/` (`target="_blank"`, `rel="noopener noreferrer"`), nos mesmos dois rodapés (`Footer.tsx` global e o rodapé embutido em `LandingView.tsx`).
+- Validado: `eslint`, `tsc --noEmit` e `next build` limpos; conferido em `/` e `/vagas` que o link existe com o texto e destino corretos.
+
+## 10.32 "Assinar Plano" abre WhatsApp com mensagem de interesse
+
+- `src/lib/utils/whatsapp.ts` (novo): `buildWhatsappLink(message)` monta um link `https://wa.me/5511911755526?text=...` (número (11) 91175-5526) com a mensagem codificada.
+- `PlanCard.tsx`: o botão "Assinar Plano" deixou de linkar para `/login` e agora abre o WhatsApp em nova aba com a mensagem "Olá! Tenho interesse no plano {nome do plano} da Orm Intelligence.", variando por card (Básico/Pro/Enterprise).
+- Validado: `eslint`, `tsc --noEmit` e `next build` limpos; conferido no navegador que os 3 botões geram a URL `wa.me` correta, com o número certo e a mensagem específica de cada plano corretamente codificada.
