@@ -25,10 +25,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ user: sessionUser });
   } catch (error) {
     if (isAxiosError<{ message?: string }>(error)) {
+      console.error('[login] axios error', {
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data,
+        baseURL: error.config?.baseURL,
+        url: error.config?.url,
+      });
+
       const status = error.response?.status ?? 502;
       const message = error.response?.data?.message ?? 'Falha no login. Verifique suas credenciais.';
       return NextResponse.json({ message }, { status });
     }
+
+    console.error('[login] non-axios error', error);
 
     return NextResponse.json({ message: 'Falha no login. Verifique suas credenciais.' }, { status: 500 });
   }
