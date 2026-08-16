@@ -1,5 +1,7 @@
 import { BrainCircuit, Briefcase, CircleFadingArrowUp, Workflow } from 'lucide-react';
+import { FEATURE_LABELS } from '@/features/plan/labels';
 import type { LucideIcon } from 'lucide-react';
+import type { PlanFeature } from '@/types/company';
 
 export interface CapabilityCopy {
   icon: LucideIcon;
@@ -35,40 +37,38 @@ export const CAPABILITIES: readonly CapabilityCopy[] = [
   },
 ];
 
-export interface PricedPlanCopy {
+export interface PlanCopy {
   name: string;
   tagline: string;
-  analysesPerMonth: number;
-  priceMonthly: number;
-  priceAnnual: number;
+  maxUsersLabel: string;
+  maxResumesLabel: string;
+  features: PlanFeature[];
+  highlighted?: boolean;
 }
 
-export const PRICED_PLANS: readonly PricedPlanCopy[] = [
+export const PLAN_COPY: readonly PlanCopy[] = [
   {
-    name: 'Easy',
-    tagline: 'Para pequenas empresas ou contratação autônoma.',
-    analysesPerMonth: 100,
-    priceMonthly: 79.9,
-    priceAnnual: 59.9,
+    name: 'Básico',
+    tagline: 'Para times pequenos começarem a organizar suas contratações.',
+    maxUsersLabel: 'Até 2 usuários',
+    maxResumesLabel: 'Até 50 currículos por mês',
+    features: [],
   },
   {
-    name: 'Company',
-    tagline: 'Para médias empresas com média de 300 funcionários.',
-    analysesPerMonth: 250,
-    priceMonthly: 119.9,
-    priceAnnual: 89.9,
+    name: 'Pro',
+    tagline: 'Para empresas que já publicam vagas e tocam processos seletivos completos.',
+    maxUsersLabel: 'Até 10 usuários',
+    maxResumesLabel: 'Até 500 currículos por mês',
+    features: ['jobOpenings', 'selectionProcesses', 'reports'],
+    highlighted: true,
   },
   {
-    name: 'Business',
-    tagline: 'Para grandes empresas com até 1.000 funcionários.',
-    analysesPerMonth: 500,
-    priceMonthly: 159.9,
-    priceAnnual: 129.9,
+    name: 'Enterprise',
+    tagline: 'Para operações de recrutamento em escala, sem limites de uso.',
+    maxUsersLabel: 'Usuários ilimitados',
+    maxResumesLabel: 'Currículos ilimitados',
+    features: ['jobOpenings', 'selectionProcesses', 'reports'],
   },
 ];
 
-export const ENTERPRISE_PLAN = {
-  name: 'Enterprise',
-  pricePerAnalysis: 2.9,
-  minAnalyses: 500,
-};
+export const ALL_PLAN_FEATURES: readonly PlanFeature[] = Object.keys(FEATURE_LABELS) as PlanFeature[];

@@ -25,6 +25,15 @@ export function Footer() {
       >
         Desenvolvido pela Kyoris Tech
       </a>
+
+      <a
+        href="https://www.linkedin.com/in/eveone/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs hover:text-accent transition"
+      >
+        Design e Direção de arte por Evelin Monteiro
+      </a>
     </footer>
   );
 }
