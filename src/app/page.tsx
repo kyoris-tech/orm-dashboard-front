@@ -1,5 +1,10 @@
-import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
+import { LandingView } from '@/features/marketing/components/LandingView';
+
+export const metadata: Metadata = {
+  title: 'Orm Intelligence',
+};
 
 export default function RootPage() {
-  redirect('/home');
+  return <LandingView />;
 }

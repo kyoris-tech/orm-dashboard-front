@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { env } from '@/config/env';
 
 const AUTH_ONLY_PUBLIC_PATHS = ['/login'];
-const ALWAYS_PUBLIC_PATHS = ['/vagas'];
+const ALWAYS_PUBLIC_PATHS = ['/', '/vagas'];
 const ALWAYS_PUBLIC_PATH_PREFIXES = ['/vagas/'];
 
 export function proxy(request: NextRequest) {

@@ -42,6 +42,10 @@ export function Header({ user }: HeaderProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  if (pathname === '/') {
+    return null;
+  }
+
   return (
     <header className="w-full z-50 md:px-20 px-5 py-5 bg-transparent text-foreground">
       <div className="border-b border-border pb-[18px] flex items-center justify-between w-full">
