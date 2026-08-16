@@ -11,6 +11,7 @@ export interface JobOpeningSummary {
   requirements: string[];
   differentials: string[];
   status: JobOpeningStatus;
+  publicCode: string;
   createdAt: string;
   _count: {
     selectionProcesses: number;

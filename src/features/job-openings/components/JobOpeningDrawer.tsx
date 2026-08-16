@@ -2,17 +2,50 @@
 
 import { useState } from 'react';
 import { isAxiosError } from 'axios';
-import { Loader2, Users, XCircle } from 'lucide-react';
+import { Check, Copy, Loader2, Users, XCircle } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils/date';
+import { buildJobOpeningPublicUrl } from '@/lib/utils/job-opening-link';
 import { CONTRACT_TYPE_LABELS, JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES, WORK_MODEL_LABELS } from '../labels';
 import { useJobOpeningQuery } from '../hooks/use-job-opening-query';
 import { useCancelJobOpeningMutation } from '../hooks/use-cancel-job-opening-mutation';
 import { SelectionProcessDrawer } from '@/features/selection-processes/components/SelectionProcessDrawer';
 import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '@/features/selection-processes/labels';
+
+function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
+  const [copied, setCopied] = useState(false);
+  const shareUrl = buildJobOpeningPublicUrl(publicCode);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-muted mb-2">Link para candidatos</p>
+      <div className="flex items-center gap-2 bg-surface-soft border border-border rounded-xl px-4 py-3">
+        <span className="text-xs text-foreground break-all flex-1 text-left">{shareUrl}</span>
+        <button
+          onClick={handleCopy}
+          title="Copiar link"
+          className="shrink-0 text-accent hover:text-accent-dark transition p-1"
+          aria-label="Copiar link"
+        >
+          {copied ? <Check size={18} /> : <Copy size={18} />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir esta ação.';
 
@@ -67,6 +100,8 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
               <Badge tone={JOB_OPENING_STATUS_TONES[jobOpening.status]}>{JOB_OPENING_STATUS_LABELS[jobOpening.status]}</Badge>
               <span className="text-xs text-muted">Criada em {formatDate(jobOpening.createdAt)}</span>
             </div>
+
+            <JobOpeningShareLink publicCode={jobOpening.publicCode} />
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>

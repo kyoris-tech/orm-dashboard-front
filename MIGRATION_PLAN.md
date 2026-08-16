@@ -1314,3 +1314,168 @@ CANCELLED`), junto com o histórico pré-existente de ações de
 currículos/empresas/usuários agora com rótulos amigáveis. Testei
 paginação (2 páginas, 29 registros) e o filtro por entidade (Vaga →
 mostra só o registro relevante). Zero erros de console em aba nova.
+
+## 10.20 Link público de compartilhamento da vaga (só a geração do link)
+
+**Escopo combinado com o usuário**: por enquanto só a criação/exposição
+do link (`/vagas/:código`) para o recrutador copiar e compartilhar com
+candidatos — a página pública em si (`/vagas/[code]`) fica para depois.
+
+**Backend**:
+- `prisma/schema.prisma`: `JobOpening` ganhou `publicCode String @unique`.
+  Migração `20260816033755_job_opening_public_code` (mão-escrita: coluna
+  nullable → backfill das 4 vagas existentes com um código aleatório via
+  `md5(random()::text || id)` → `NOT NULL` → índice único), já que
+  `prisma migrate dev` não roda em modo não-interativo quando precisa de
+  um valor default para linhas existentes.
+- `job-opening.service.ts`: `create()` agora gera o código via
+  `randomBytes(8).toString('base64url')` (10 caracteres, URL-safe) e
+  tenta persistir com retry (até 5 tentativas) em caso de colisão
+  (`P2002`), lançando `ConflictException` se esgotar as tentativas —
+  colisão é praticamente impossível nesse espaço, mas o retry deixa a
+  geração robusta em vez de assumir unicidade.
+
+**Frontend**:
+- `types/job-opening.ts`: `JobOpeningSummary` ganhou `publicCode`.
+- `src/lib/utils/job-opening-link.ts`: helper `buildJobOpeningPublicUrl`
+  monta a URL a partir de `window.location.origin` (mesmo domínio da
+  aplicação).
+- `JobOpeningDrawer.tsx`: nova seção "Link para candidatos" mostrando a
+  URL completa com botão de copiar (mesmo padrão visual/UX do
+  `NewTokenDialog` de token de empresa), com fallback silencioso caso o
+  navegador negue acesso à área de transferência.
+
+**Validação**: `tsc`/`nest build` limpos no backend, `eslint`/`next
+build` limpos no frontend. Testado ao vivo: criei a vaga "Teste Link
+Vaga" pelo navegador e o drawer exibiu
+`http://localhost:3001/vagas/isprVicbzi` corretamente; cliquei em
+copiar (o clipboard do navegador de teste automatizado nega permissão
+de escrita neste ambiente sandboxed — mesma limitação que já existe no
+fluxo de token de empresa — sem relação com a lógica implementada).
+Confirmado que nenhuma rota pública `/vagas/[code]` foi criada, como
+combinado.
+
+## 10.21 Página pública `/vagas/[codigo]` (informações da vaga + envio de currículo)
+
+**Referência usada**: `C:\Users\Paulo\Projetos\orm-front-candidate` — protótipo React/Vite
+com a estrutura desejada (coluna de informações da vaga + coluna de
+upload com dicas e validações). Portei a estrutura e as validações,
+mas reconstruí com os componentes/design tokens já existentes no
+`orm-dashboard-front` (Badge, layout, cores do tema) em vez de copiar
+o código do protótipo — inclusive reaproveitando o `UploadArea.tsx`
+interno como base para a versão pública.
+
+**Esta é a primeira feature verdadeiramente pública** (sem login) do
+dashboard — precisou de superfície backend nova e ajuste no middleware
+de autenticação.
+
+**Backend**:
+- `job-opening.service.ts`: `findPublicByCode(code)` (retorna só os
+  campos seguros para exibição pública: título, empresa, modelo,
+  contrato, faixa salarial, requisitos, diferenciais, status —
+  nenhum id interno) e `getCompanyIdForOpenPublicCode(code)` (resolve
+  a empresa da vaga, exige `status === 'OPEN'` e `company.status ===
+  'ACTIVE'`, rejeitando candidaturas para vagas encerradas/canceladas
+  ou empresas bloqueadas).
+- `PublicJobOpeningController` (novo, `src/job-opening/public-job-opening.controller.ts`):
+  controller **sem `@UseGuards(JwtAuthGuard)`**, deliberadamente
+  separado do `JobOpeningController` autenticado para manter a
+  superfície pública auditável em um único lugar.
+  - `GET /api/v1/public/job-openings/:code` — detalhes da vaga.
+  - `POST /api/v1/public/job-openings/:code/apply` — upload do
+    currículo do candidato, reaproveitando o `UploadService.upload()`
+    já existente (mesma extração + análise por IA + gravação do
+    `Resume` já usada nos uploads internos), escopado à empresa da
+    vaga.
+- `ResumesModule` passou a exportar `UploadService` para ser
+  reaproveitado pelo `JobOpeningModule`.
+- **Proteções por ser uma rota pública e sem autenticação**:
+  - `PublicApplyThrottlerGuard` (novo): limita a **30 candidaturas a
+    cada 30 minutos por vaga** (`:code` como chave, não IP — mesma
+    lógica já usada no throttle de login, necessária porque toda a
+    aplicação passa pelo BFF do Next.js, então todo tráfego chega ao
+    backend com o IP do servidor Next, não do candidato; usar o
+    código da vaga como chave evita que uma vaga com muito tráfego
+    throttle candidatos de outras vagas).
+  - Limite de tamanho de arquivo (25 MB) aplicado no
+    `FileInterceptor` do endpoint (nenhuma outra rota de upload tinha
+    esse limite no multer — as demais dependem só da validação client-side;
+    aqui, por ser pública, adicionei a validação também no servidor).
+  - Checagem de `company.status === 'ACTIVE'` (empresa bloqueada não
+    recebe candidaturas mesmo com um link antigo ainda ativo).
+
+**Frontend**:
+- `src/proxy.ts`: `PUBLIC_PATHS` virou dois grupos —
+  `AUTH_ONLY_PUBLIC_PATHS` (`/login`, redireciona pra `/home` se já
+  logado) e `ALWAYS_PUBLIC_PATH_PREFIXES` (`/vagas/`, sempre acessível
+  com ou sem sessão — um recrutador logado consegue pré-visualizar o
+  link que acabou de copiar sem ser redirecionado).
+- `src/app/vagas/[codigo]/page.tsx`: rota pública nova, fora do grupo
+  `(protected)`.
+- `src/features/public-job-opening/`: `api.ts` (usa o `httpClient`
+  padrão do BFF, mesmo client dos outros features),
+  `hooks/use-public-job-opening-query.ts`,
+  `hooks/use-apply-mutation.ts`,
+  `components/PublicJobOpeningView.tsx` (layout de duas colunas:
+  informações da vaga à esquerda, dicas + upload à direita — mostra
+  "Vaga não encontrada" ou "Vaga encerrada" nos estados apropriados),
+  `components/PublicApplyArea.tsx` (adaptação do `UploadArea.tsx`
+  interno para upload de um único arquivo contra o endpoint público,
+  mesmas validações de tipo/tamanho, drag-and-drop, overlay de
+  carregamento e banner de sucesso/erro).
+- `src/app/api/public/job-openings/[code]/route.ts` e
+  `.../[code]/apply/route.ts`: rotas BFF que **não** chamam
+  `requireSessionToken()` (diferente de todas as outras rotas BFF do
+  projeto) — proxiam direto pro backend com `x-api-key`, sem exigir
+  cookie de sessão.
+
+**Validação**: `tsc`/`nest build` limpos no backend, `eslint`/`next
+build` limpos no frontend. Testado ao vivo:
+- Acesso sem cookie de sessão a `/vagas/isprVicbzi` retorna 200 (vs.
+  `/home` que retorna 307), confirmando que a rota é genuinamente
+  pública.
+- Upload real de um currículo PDF via `curl` direto no backend e via
+  a rota BFF do Next — ambos retornaram 201 com o currículo
+  corretamente processado e salvo na empresa certa (`Kyoris Tech`),
+  confirmado por query direta no banco.
+- Rejeição de arquivo `.txt` (tipo não suportado) → 400 com mensagem
+  clara.
+- Vaga fechada (`status: CLOSED`) → página mostra "Vaga encerrada" e
+  esconde a área de upload.
+- Código inexistente → página mostra "Vaga não encontrada".
+- Zero erros de console em aba nova sem sessão.
+
+## 10.22 Página pública `/vagas` (listagem de todas as vagas abertas)
+
+Complementa a 10.21: acessar `/vagas` sem código agora mostra uma
+tabela com todas as vagas atualmente abertas (de qualquer empresa
+ativa na plataforma), e clicar numa linha leva para `/vagas/[codigo]`.
+
+**Backend**:
+- `job-opening.service.ts`: `findAllPublicOpen()` — lista só vagas com
+  `status: 'OPEN'` de empresas com `status: 'ACTIVE'`, ordenadas por
+  mais recentes, retornando apenas campos seguros para exibição
+  pública (inclui `publicCode`, necessário para montar o link de cada
+  linha).
+- `PublicJobOpeningController`: novo `GET /api/v1/public/job-openings`
+  (sem `:code`) — mesma proteção de "sem guard" do restante do
+  controller público, mas sem necessidade de throttle adicional (é
+  uma leitura simples de banco, não aciona a IA).
+
+**Frontend**:
+- `src/proxy.ts`: `/vagas` (sem barra final) precisou ser adicionado
+  explicitamente como rota sempre-pública — o prefixo `/vagas/` já
+  cobria `/vagas/[codigo]` mas não o path exato `/vagas`.
+- `src/app/vagas/page.tsx`: nova rota-irmã de `/vagas/[codigo]`.
+- `src/features/public-job-opening/components/PublicJobOpeningsListView.tsx`:
+  tabela (mesmo `DataTable`/TanStack Table usado nas telas internas)
+  com Título, Empresa, Modelo, Contrato, Faixa salarial e Publicada em;
+  clique na linha navega via `router.push('/vagas/' + publicCode)`.
+- `getPublicJobOpenings`/`usePublicJobOpeningsQuery` seguindo o mesmo
+  padrão dos outros hooks do feature.
+
+**Validação**: `tsc`/`nest build` limpos, `eslint`/`next build`
+limpos. Testado ao vivo sem sessão: `/vagas` retorna 200 e lista só a
+vaga aberta existente (as demais, fechadas/canceladas, corretamente
+ausentes); clique na linha navega para `/vagas/isprVicbzi` e carrega
+os detalhes corretamente. Zero erros de console.
