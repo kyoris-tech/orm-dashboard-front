@@ -5,6 +5,8 @@ import { AdminView } from '@/features/admin/components/AdminView';
 
 export const metadata: Metadata = {
   title: 'Administração · Orm',
+  description: 'Gerencie empresas, usuários, planos e auditoria da plataforma Orm Intelligence.',
+  robots: { index: false, follow: false },
 };
 
 export default async function AdminPage() {
