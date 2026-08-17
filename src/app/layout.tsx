@@ -14,8 +14,17 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: 'Orm',
-  description: 'Orm dashboard',
+  metadataBase: new URL('https://useorm.com'),
+  title: {
+    default: 'Orm Intelligence',
+    template: '%s',
+  },
+  description: 'Plataforma de recrutamento com triagem de currículos por inteligência artificial, operada pela Kyoris Tech.',
+  openGraph: {
+    siteName: 'Orm Intelligence',
+    locale: 'pt_BR',
+    type: 'website',
+  },
 };
 
 export default async function RootLayout({ children }: LayoutProps<'/'>) {
