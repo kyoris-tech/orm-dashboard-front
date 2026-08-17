@@ -19,5 +19,6 @@ export interface PublicJobOpeningSummary {
   workModel: WorkModel;
   contractType: ContractType;
   salaryRange: string | null;
+  requirements: string[];
   createdAt: string;
 }
