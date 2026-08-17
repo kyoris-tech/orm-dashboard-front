@@ -21,3 +21,7 @@ export async function updateUserStatus(id: string, status: Status): Promise<User
   const { data } = await httpClient.patch<UserSummary>(`/admin/users/${id}/status`, { status });
   return data;
 }
+
+export async function updateUserPassword(id: string, password: string): Promise<void> {
+  await httpClient.patch(`/admin/users/${id}/password`, { password });
+}
