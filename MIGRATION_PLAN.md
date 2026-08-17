@@ -1757,3 +1757,14 @@ Kyoris Tech pra Enterprise e limpando os campos indevidos.
 - `src/lib/utils/whatsapp.ts` (novo): `buildWhatsappLink(message)` monta um link `https://wa.me/5511911755526?text=...` (número (11) 91175-5526) com a mensagem codificada.
 - `PlanCard.tsx`: o botão "Assinar Plano" deixou de linkar para `/login` e agora abre o WhatsApp em nova aba com a mensagem "Olá! Tenho interesse no plano {nome do plano} da Orm Intelligence.", variando por card (Básico/Pro/Enterprise).
 - Validado: `eslint`, `tsc --noEmit` e `next build` limpos; conferido no navegador que os 3 botões geram a URL `wa.me` correta, com o número certo e a mensagem específica de cada plano corretamente codificada.
+
+## 10.33 SEO do site
+
+- `src/app/layout.tsx`: adicionado `metadataBase` (`https://useorm.com`), `title.template`, `description` e `openGraph` padrão (fallback só usado se uma página não sobrescrever, o que não acontece hoje — toda página já define seu próprio título).
+- **`/` (landing)**: título e descrição reescritos com base no conteúdo do documento de visão geral de produto gerado anteriormente ("Recrutamento com triagem de currículos por IA, de ponta a ponta"), + `keywords`, Open Graph, Twitter card e `canonical`.
+- **`/vagas`**: mantido o título específico da página + descrição própria + Open Graph + `canonical` — indexável (é conteúdo público real).
+- **`/vagas/[codigo]`**: passou a usar `generateMetadata` (antes era um título estático `"Vaga · Orm"` igual para qualquer vaga). Agora busca a vaga no backend em `generateMetadata` e monta um título único por vaga (`"{Título} na {Empresa} · Orm"`) + descrição própria + Open Graph + `canonical`. Vagas fechadas/canceladas ou códigos inexistentes recebem `robots: noindex`.
+- **Páginas protegidas** (`/home`, `/metrics`, `/admin`) e **`/login`**: mantiveram seus títulos específicos, ganharam descrição própria e `robots: { index: false, follow: false }` — não fazem sentido nos resultados de busca (exigem login).
+- Novos `src/app/robots.ts` e `src/app/sitemap.ts`: `robots.txt` libera `/` e bloqueia `/home`, `/admin`, `/metrics`, `/login`, `/api/`; `sitemap.xml` lista `/`, `/vagas` e, dinamicamente, cada vaga aberta (`/vagas/:codigo`) buscando a lista pública no backend, com fallback silencioso pra só as rotas estáticas se o backend estiver fora do ar.
+- **Bug real encontrado no caminho**: `src/proxy.ts` (o guard de autenticação) redirecionava `/robots.txt` e `/sitemap.xml` para `/login` por não estarem na lista de rotas sempre públicas — o que quebraria completamente a indexação (crawlers não autenticados nunca veriam o conteúdo real). Corrigido adicionando as duas rotas a `ALWAYS_PUBLIC_PATHS`.
+- Validado: `eslint`, `tsc --noEmit` e `next build` limpos. Testado ao vivo: título/descrição/OG corretos em `/` e `/vagas`, `robots: noindex` em `/login`, `/robots.txt` e `/sitemap.xml` respondendo 200 com o conteúdo esperado (antes da correção do proxy, ambos respondiam 307 para `/login`).
