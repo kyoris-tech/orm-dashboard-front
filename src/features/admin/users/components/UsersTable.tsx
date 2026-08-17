@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { Ban, CircleCheck, Trash2 } from 'lucide-react';
+import { Ban, CircleCheck, KeyRound, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -12,6 +12,8 @@ import { formatDate } from '@/lib/utils/date';
 import { useSessionUser } from '@/context/SessionProvider';
 import { useUsersQuery } from '../hooks/use-users-query';
 import { useUpdateUserStatusMutation } from '../hooks/use-update-user-status-mutation';
+import { useUpdateUserPasswordMutation } from '../hooks/use-update-user-password-mutation';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { ALL_COMPANIES_VALUE } from '../constants';
 import { ROLE_LABELS, USER_STATUS_LABELS, USER_STATUS_TONES } from '../labels';
 import type { UserSummary } from '@/types/user';
@@ -36,10 +38,13 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
   const sessionUser = useSessionUser();
   const usersQuery = useUsersQuery();
   const updateStatusMutation = useUpdateUserStatusMutation();
+  const updatePasswordMutation = useUpdateUserPasswordMutation();
 
   const [blockingUser, setBlockingUser] = useState<UserSummary | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserSummary | null>(null);
+  const [changingPasswordUser, setChangingPasswordUser] = useState<UserSummary | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   function handleConfirmBlockToggle() {
     if (!blockingUser) {
@@ -66,6 +71,23 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
       { id: deletingUser.id, status: 'DELETED' },
       {
         onSuccess: () => setDeletingUser(null),
+        onError: (error) => setErrorMessage(extractErrorMessage(error)),
+      },
+    );
+  }
+
+  function handleChangePassword(password: string) {
+    if (!changingPasswordUser) {
+      return;
+    }
+
+    updatePasswordMutation.mutate(
+      { id: changingPasswordUser.id, password },
+      {
+        onSuccess: () => {
+          setSuccessMessage(`Senha de "${changingPasswordUser.name}" alterada com sucesso.`);
+          setChangingPasswordUser(null);
+        },
         onError: (error) => setErrorMessage(extractErrorMessage(error)),
       },
     );
@@ -102,6 +124,19 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
 
           return (
             <div className="flex items-center gap-3">
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setChangingPasswordUser(user);
+                }}
+                disabled={isDeleted}
+                title="Alterar senha"
+                aria-label="Alterar senha"
+                className="text-muted hover:text-accent transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <KeyRound size={16} />
+              </button>
+
               <button
                 onClick={(event) => {
                   event.stopPropagation();
@@ -185,7 +220,16 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
         tone="danger"
       />
 
+      <ChangePasswordDialog
+        isOpen={Boolean(changingPasswordUser)}
+        user={changingPasswordUser}
+        isSubmitting={updatePasswordMutation.isPending}
+        onSubmit={handleChangePassword}
+        onCancel={() => setChangingPasswordUser(null)}
+      />
+
       {errorMessage && <Toast message={errorMessage} onDismiss={() => setErrorMessage(null)} />}
+      {successMessage && <Toast message={successMessage} onDismiss={() => setSuccessMessage(null)} />}
     </div>
   );
 }

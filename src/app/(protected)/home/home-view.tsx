@@ -7,7 +7,6 @@ import { RecentImports } from '@/features/resumes/components/RecentImports';
 import { AnalyzeSection } from '@/features/resumes/components/AnalyzeSection';
 import { SelectionProcessesTable } from '@/features/selection-processes/components/SelectionProcessesTable';
 import { JobOpeningsView } from '@/features/job-openings/components/JobOpeningsView';
-import { PlanUsageCard } from '@/features/plan/components/PlanUsageCard';
 import { PlanFeatureGate } from '@/features/plan/components/PlanFeatureGate';
 import { PageContainer } from '@/components/layout/PageContainer';
 
@@ -16,10 +15,6 @@ export function HomeView() {
 
   return (
     <PageContainer>
-      <div className="w-full max-w-6xl mx-auto mb-6">
-        <PlanUsageCard />
-      </div>
-
       <ImportToggle active={activeSection} onChange={setActiveSection} />
 
       {activeSection === 'import' && (
