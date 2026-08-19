@@ -8,6 +8,7 @@ export interface PublicJobOpening {
   salaryRange: string | null;
   requirements: string[];
   differentials: string[];
+  benefits: string[];
   status: JobOpeningStatus;
   createdAt: string;
 }

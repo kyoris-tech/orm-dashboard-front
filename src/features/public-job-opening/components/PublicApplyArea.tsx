@@ -60,7 +60,15 @@ export function PublicApplyArea({ code }: PublicApplyAreaProps) {
     }
 
     setFile(candidate);
-    applyMutation.mutate(candidate);
+    applyMutation.mutate(candidate, {
+      onSuccess: () => {
+        setFile(null);
+
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
+      },
+    });
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {

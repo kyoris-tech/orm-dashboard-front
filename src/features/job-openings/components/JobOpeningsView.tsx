@@ -5,7 +5,7 @@ import { isAxiosError } from 'axios';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
-import { CreateJobOpeningDialog } from './CreateJobOpeningDialog';
+import { JobOpeningFormDialog } from './JobOpeningFormDialog';
 import { JobOpeningsTable } from './JobOpeningsTable';
 import { useCreateJobOpeningMutation } from '../hooks/use-create-job-opening-mutation';
 import type { CreateJobOpeningInput } from '@/types/job-opening';
@@ -43,8 +43,9 @@ export function JobOpeningsView() {
 
       <JobOpeningsTable />
 
-      <CreateJobOpeningDialog
+      <JobOpeningFormDialog
         isOpen={isCreateOpen}
+        jobOpening={null}
         isSubmitting={createJobOpeningMutation.isPending}
         onSubmit={handleSubmit}
         onCancel={() => setIsCreateOpen(false)}

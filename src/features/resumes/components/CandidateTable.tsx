@@ -10,7 +10,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table';
-import { Briefcase, CloudDownload, Flame, Trash } from 'lucide-react';
+import { Briefcase, CloudDownload, Flame, Link2, Trash } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -24,7 +24,9 @@ import { useHardDeleteResumeMutation } from '../hooks/use-hard-delete-resume-mut
 import { downloadResumePdf } from '../api';
 import { ResumeModal } from './ResumeModal';
 import { CreateSelectionProcessDialog } from '@/features/selection-processes/components/CreateSelectionProcessDialog';
+import { LinkCandidateToJobOpeningDialog } from '@/features/selection-processes/components/LinkCandidateToJobOpeningDialog';
 import { useCreateSelectionProcessMutation } from '@/features/selection-processes/hooks/use-create-selection-process-mutation';
+import { useLinkCandidateMutation } from '@/features/selection-processes/hooks/use-link-candidate-mutation';
 import type { ResumeListItem, ResumeSearchFilters } from '@/types/resumes';
 
 export interface CandidateTableProps {
@@ -79,11 +81,14 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
   const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
   const [isCreateProcessOpen, setIsCreateProcessOpen] = useState(false);
+  const [linkingResume, setLinkingResume] = useState<CandidateRow | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const searchResumesQuery = useSearchResumesQuery(filters);
   const { requestDelete, undoDelete, dismiss, pendingId, isDeleting } = useUndoableDelete();
   const hardDeleteResumeMutation = useHardDeleteResumeMutation();
   const createSelectionProcessMutation = useCreateSelectionProcessMutation();
+  const linkCandidateMutation = useLinkCandidateMutation();
 
   const rows = useMemo<CandidateRow[]>(() => {
     const resumes = searchResumesQuery.data?.data ?? [];
@@ -148,6 +153,18 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
 
           return (
             <div className="flex gap-2 items-center">
+              <button
+                className="p-2 text-accent"
+                title="Vincular a uma vaga"
+                aria-label="Vincular a uma vaga"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setLinkingResume(row);
+                }}
+              >
+                <Link2 size={20} />
+              </button>
+
               <button
                 className="p-2 text-accent"
                 title="Baixar PDF"
@@ -234,6 +251,23 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
     );
   }
 
+  function handleLinkCandidate(jobOpeningId: string) {
+    if (!linkingResume) {
+      return;
+    }
+
+    linkCandidateMutation.mutate(
+      { resumeId: linkingResume.id, jobOpeningId },
+      {
+        onSuccess: () => {
+          setSuccessMessage(`${linkingResume.name} foi vinculado à vaga com sucesso.`);
+          setLinkingResume(null);
+        },
+        onError: (error) => setActionErrorMessage(extractErrorMessage(error)),
+      },
+    );
+  }
+
   const pagination = searchResumesQuery.data?.pagination;
 
   return (
@@ -301,9 +335,18 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
         onCancel={() => setIsCreateProcessOpen(false)}
       />
 
+      <LinkCandidateToJobOpeningDialog
+        isOpen={Boolean(linkingResume)}
+        candidateName={linkingResume?.name ?? null}
+        isSubmitting={linkCandidateMutation.isPending}
+        onSubmit={handleLinkCandidate}
+        onCancel={() => setLinkingResume(null)}
+      />
+
       <ResumeModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} resume={selectedResume} />
 
       {actionErrorMessage && <Toast message={actionErrorMessage} onDismiss={() => setActionErrorMessage(null)} />}
+      {successMessage && <Toast message={successMessage} onDismiss={() => setSuccessMessage(null)} />}
     </div>
   );
 }
