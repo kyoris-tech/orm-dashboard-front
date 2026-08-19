@@ -59,7 +59,7 @@ export function AnalyzeSection({ onSelectionProcessCreated }: AnalyzeSectionProp
   );
 
   return (
-    <section className="w-full max-w-6xl mx-auto">
+    <section className="w-full max-w-7xl mx-auto">
       <FiltersBar
         filters={draftFilters}
         appliedFilters={appliedFilters}

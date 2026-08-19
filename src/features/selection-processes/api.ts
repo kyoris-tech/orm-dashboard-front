@@ -40,3 +40,8 @@ export async function addCandidatesToSelectionProcess(id: string, resumeIds: str
   const { data } = await httpClient.post<SelectionProcessDetail>(`/selection-processes/${id}/candidates`, { resumeIds });
   return data;
 }
+
+export async function linkCandidateToJobOpening(resumeId: string, jobOpeningId: string): Promise<SelectionProcessDetail> {
+  const { data } = await httpClient.post<SelectionProcessDetail>('/selection-processes/link-candidate', { resumeId, jobOpeningId });
+  return data;
+}

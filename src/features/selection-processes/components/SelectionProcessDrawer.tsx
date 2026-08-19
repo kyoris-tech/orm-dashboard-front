@@ -24,6 +24,13 @@ import type { ResumeListItem } from '@/types/resumes';
 
 const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir esta ação.';
 
+function matchScoreTone(value: number): string {
+  if (value > 80) return 'bg-success';
+  if (value >= 60) return 'bg-accent';
+  if (value >= 30) return 'bg-[#FFD600] !text-[#001B30]';
+  return 'bg-border !text-muted';
+}
+
 function extractErrorMessage(error: unknown): string {
   if (isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
@@ -198,6 +205,13 @@ export function SelectionProcessDrawer({ processId, onClose }: SelectionProcessD
                   <span className="flex flex-col">
                     <span className="text-sm font-medium text-foreground">{entry.resume.dataJson?.fullName ?? entry.resume.fullName}</span>
                     <span className="text-xs text-muted">Adicionado em {formatDate(entry.addedAt)}</span>
+                  </span>
+
+                  <span
+                    title="Percentual de adesão do currículo aos requisitos da vaga"
+                    className={`ml-auto px-3 py-1 rounded-full text-white text-xs font-semibold shrink-0 ${matchScoreTone(entry.matchScore ?? 0)}`}
+                  >
+                    {entry.matchScore ?? 0}% de adesão
                   </span>
                 </button>
               ))}

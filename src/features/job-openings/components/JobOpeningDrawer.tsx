@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { isAxiosError } from 'axios';
-import { Check, Copy, Loader2, Users, XCircle } from 'lucide-react';
+import { Check, Copy, Loader2, Pencil, Users, XCircle } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -12,8 +12,11 @@ import { buildJobOpeningPublicUrl } from '@/lib/utils/job-opening-link';
 import { CONTRACT_TYPE_LABELS, JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES, WORK_MODEL_LABELS } from '../labels';
 import { useJobOpeningQuery } from '../hooks/use-job-opening-query';
 import { useCancelJobOpeningMutation } from '../hooks/use-cancel-job-opening-mutation';
+import { useUpdateJobOpeningMutation } from '../hooks/use-update-job-opening-mutation';
+import { JobOpeningFormDialog } from './JobOpeningFormDialog';
 import { SelectionProcessDrawer } from '@/features/selection-processes/components/SelectionProcessDrawer';
 import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '@/features/selection-processes/labels';
+import type { CreateJobOpeningInput } from '@/types/job-opening';
 
 function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
   const [copied, setCopied] = useState(false);
@@ -65,8 +68,10 @@ export interface JobOpeningDrawerProps {
 export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProps) {
   const jobOpeningQuery = useJobOpeningQuery(jobOpeningId);
   const cancelJobOpeningMutation = useCancelJobOpeningMutation();
+  const updateJobOpeningMutation = useUpdateJobOpeningMutation();
   const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 
   const jobOpening = jobOpeningQuery.data;
@@ -81,6 +86,20 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
       onSuccess: () => setIsCancelConfirmOpen(false),
       onError: (error) => setActionErrorMessage(extractErrorMessage(error)),
     });
+  }
+
+  function handleEditSubmit(input: CreateJobOpeningInput) {
+    if (!jobOpeningId) {
+      return;
+    }
+
+    updateJobOpeningMutation.mutate(
+      { id: jobOpeningId, input },
+      {
+        onSuccess: () => setIsEditOpen(false),
+        onError: (error) => setActionErrorMessage(extractErrorMessage(error)),
+      },
+    );
   }
 
   return (
@@ -100,6 +119,14 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
               <Badge tone={JOB_OPENING_STATUS_TONES[jobOpening.status]}>{JOB_OPENING_STATUS_LABELS[jobOpening.status]}</Badge>
               <span className="text-xs text-muted">Criada em {formatDate(jobOpening.createdAt)}</span>
             </div>
+
+            <button
+              onClick={() => setIsEditOpen(true)}
+              className="flex items-center justify-center gap-2 text-sm text-accent border border-accent/30 rounded-full py-2 hover:bg-accent/5 transition"
+            >
+              <Pencil size={16} />
+              Editar vaga
+            </button>
 
             <JobOpeningShareLink publicCode={jobOpening.publicCode} />
 
@@ -142,6 +169,19 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
                   {jobOpening.differentials.map((differential) => (
                     <Badge key={differential} tone="neutral">
                       {differential}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {jobOpening.benefits.length > 0 && (
+              <div>
+                <p className="text-sm text-muted mb-2">Benefícios</p>
+                <div className="flex flex-wrap gap-2">
+                  {jobOpening.benefits.map((benefit) => (
+                    <Badge key={benefit} tone="success">
+                      {benefit}
                     </Badge>
                   ))}
                 </div>
@@ -197,6 +237,14 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
       </Drawer>
 
       <SelectionProcessDrawer processId={selectedProcessId} onClose={() => setSelectedProcessId(null)} />
+
+      <JobOpeningFormDialog
+        isOpen={isEditOpen}
+        jobOpening={jobOpening ?? null}
+        isSubmitting={updateJobOpeningMutation.isPending}
+        onSubmit={handleEditSubmit}
+        onCancel={() => setIsEditOpen(false)}
+      />
 
       <ConfirmDialog
         isOpen={isCancelConfirmOpen}

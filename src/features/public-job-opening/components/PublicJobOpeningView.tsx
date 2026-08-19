@@ -86,6 +86,17 @@ export function PublicJobOpeningView({ code }: PublicJobOpeningViewProps) {
             </div>
           )}
 
+          {jobOpening.benefits.length > 0 && (
+            <div>
+              <p className="text-muted mb-1">Benefícios</p>
+              <ul className="list-disc list-inside space-y-1 text-foreground">
+                {jobOpening.benefits.map((benefit) => (
+                  <li key={benefit}>{benefit}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {jobOpening.salaryRange && (
             <div>
               <p className="text-muted">Faixa salarial</p>
