@@ -34,6 +34,7 @@ export interface SelectionProcessCandidateEntry {
   id: string;
   resumeId: string;
   addedAt: string;
+  matchScore: number | null;
   resume: ResumeListItem;
 }
 

@@ -10,6 +10,7 @@ export interface JobOpeningSummary {
   salaryRange: string | null;
   requirements: string[];
   differentials: string[];
+  benefits: string[];
   status: JobOpeningStatus;
   publicCode: string;
   createdAt: string;
@@ -39,4 +40,7 @@ export interface CreateJobOpeningInput {
   salaryRange?: string;
   requirements: string[];
   differentials: string[];
+  benefits: string[];
 }
+
+export type UpdateJobOpeningInput = CreateJobOpeningInput;
