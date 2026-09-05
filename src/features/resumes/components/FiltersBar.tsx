@@ -17,11 +17,11 @@ export interface FiltersBarProps {
 }
 
 const FILTER_CONFIGS = [
-  { key: 'skills', label: 'Habilidades', icon: Lightbulb },
-  { key: 'title', label: 'Cargo', icon: HatGlasses },
-  { key: 'degree', label: 'Escolaridade', icon: GraduationCap },
-  { key: 'city', label: 'Localidade', icon: MapPin },
-  { key: 'languages', label: 'Idiomas', icon: Languages },
+  { key: 'skills', label: 'Habilidades', icon: Lightbulb, placeholder: 'Ex: React, Design Systems' },
+  { key: 'title', label: 'Cargo', icon: HatGlasses, placeholder: 'Ex: Desenvolvedor, Analista' },
+  { key: 'degree', label: 'Escolaridade', icon: GraduationCap, placeholder: 'Ex: Ciência da Computação' },
+  { key: 'city', label: 'Localidade', icon: MapPin, placeholder: 'Ex: São Paulo, Diadema' },
+  { key: 'languages', label: 'Idiomas', icon: Languages, placeholder: 'Ex: Inglês, Espanhol' },
 ] as const;
 
 export function FiltersBar({ filters, appliedFilters, search, onFilterChange, onApplyFilter, onClearFilter, onSearchChange }: FiltersBarProps) {
@@ -32,11 +32,12 @@ export function FiltersBar({ filters, appliedFilters, search, onFilterChange, on
       <SearchInput value={search} onChange={onSearchChange} placeholder="Buscar: Nome, e-mail ou Cargo" />
 
       <div className="flex justify-center gap-3 flex-wrap relative z-50">
-        {FILTER_CONFIGS.map(({ key, label, icon: Icon }) => (
+        {FILTER_CONFIGS.map(({ key, label, icon: Icon, placeholder }) => (
           <FilterButton
             key={key}
             label={label}
             icon={<Icon size={20} />}
+            placeholder={placeholder}
             isActive={activeFilter === key}
             isApplied={appliedFilters[key].trim() !== ''}
             value={filters[key]}

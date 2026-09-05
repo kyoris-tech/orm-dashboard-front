@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { isAxiosError } from 'axios';
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -28,6 +27,8 @@ import { LinkCandidateToJobOpeningDialog } from '@/features/selection-processes/
 import { useCreateSelectionProcessMutation } from '@/features/selection-processes/hooks/use-create-selection-process-mutation';
 import { useLinkCandidateMutation } from '@/features/selection-processes/hooks/use-link-candidate-mutation';
 import type { ResumeListItem, ResumeSearchFilters } from '@/types/resumes';
+import { extractErrorMessage } from '@/lib/utils/error';
+import { scoreTone } from '@/lib/utils/score';
 
 export interface CandidateTableProps {
   filters: ResumeSearchFilters;
@@ -48,23 +49,6 @@ interface CandidateRow {
 
 function toSafeText(value: string | undefined | null): string {
   return value && value.trim() !== '' ? value : 'N/A';
-}
-
-function compatibilityTone(value: number): string {
-  if (value > 80) return 'bg-success';
-  if (value >= 60) return 'bg-accent';
-  if (value >= 30) return 'bg-[#FFD600] !text-[#001B30]';
-  return 'bg-border !text-muted';
-}
-
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir esta ação.';
-
-function extractErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-  }
-
-  return DEFAULT_ERROR_MESSAGE;
 }
 
 const columnHelper = createColumnHelper<CandidateRow>();
@@ -130,7 +114,7 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
         enableSorting: false,
         cell: (info) => {
           const value = info.getValue();
-          return <div className={`px-3 py-1 rounded-full text-white text-sm font-semibold w-fit ${compatibilityTone(value)}`}>{value}%</div>;
+          return <div className={`px-3 py-1 rounded-full text-white text-sm font-semibold w-fit ${scoreTone(value)}`}>{value}%</div>;
         },
       }),
       columnHelper.accessor('name', { header: 'Nome' }),

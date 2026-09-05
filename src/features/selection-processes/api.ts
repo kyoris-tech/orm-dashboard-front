@@ -1,8 +1,9 @@
 import { httpClient } from '@/lib/http/client';
+import type { Paginated, PaginationParams } from '@/types/pagination';
 import type { CreateSelectionProcessInput, SelectionProcessDetail, SelectionProcessSummary } from '@/types/selection-process';
 
-export async function getSelectionProcesses(): Promise<SelectionProcessSummary[]> {
-  const { data } = await httpClient.get<SelectionProcessSummary[]>('/selection-processes');
+export async function getSelectionProcesses(params: PaginationParams = {}): Promise<Paginated<SelectionProcessSummary>> {
+  const { data } = await httpClient.get<Paginated<SelectionProcessSummary>>('/selection-processes', { params });
   return data;
 }
 

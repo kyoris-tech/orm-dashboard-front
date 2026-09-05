@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Select } from '@/components/ui/Select';
 import { useJobOpeningsQuery } from '../hooks/use-job-openings-query';
+import { ALL_ITEMS_PAGE_SIZE } from '@/types/pagination';
 
 export interface JobOpeningPickerProps {
   value: string;
@@ -13,10 +14,10 @@ export interface JobOpeningPickerProps {
 const NO_JOB_OPENING_OPTION = { value: '', label: 'Nenhuma vaga vinculada' };
 
 export function JobOpeningPicker({ value, onChange, disabled }: JobOpeningPickerProps) {
-  const jobOpeningsQuery = useJobOpeningsQuery();
+  const jobOpeningsQuery = useJobOpeningsQuery({ pageSize: ALL_ITEMS_PAGE_SIZE });
 
   const options = useMemo(() => {
-    const openJobOpenings = (jobOpeningsQuery.data ?? []).filter((jobOpening) => jobOpening.status === 'OPEN');
+    const openJobOpenings = (jobOpeningsQuery.data?.data ?? []).filter((jobOpening) => jobOpening.status === 'OPEN');
     return [NO_JOB_OPENING_OPTION, ...openJobOpenings.map((jobOpening) => ({ value: jobOpening.id, label: jobOpening.title }))];
   }, [jobOpeningsQuery.data]);
 

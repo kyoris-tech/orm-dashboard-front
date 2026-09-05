@@ -1,12 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-import { ModalPortal } from '@/components/ui/ModalPortal';
+import { Modal } from '@/components/ui/Modal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Button } from '@/components/ui/Button';
+import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { useCompanyResumesQuery } from '@/features/resumes/hooks/use-company-resumes-query';
 
 export interface AddCandidatesDialogProps {
@@ -63,75 +63,52 @@ export function AddCandidatesDialog({ isOpen, existingResumeIds, isSubmitting, o
   }
 
   return (
-    <ModalPortal>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-              className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-8 flex flex-col max-h-[85vh]"
-            >
-              <h2 className="text-2xl font-semibold text-accent mb-4 text-center">Adicionar candidatos</h2>
+    <Modal isOpen={isOpen} className="flex flex-col max-h-[85vh]">
+      <h2 className="text-2xl font-semibold text-accent mb-4 text-center">Adicionar candidatos</h2>
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 min-h-0">
-                <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome" />
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 min-h-0">
+        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome" />
 
-                <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 border border-border rounded-xl p-2">
-                  {companyResumesQuery.isLoading && (
-                    <div className="flex justify-center items-center h-32">
-                      <Loader2 className="animate-spin text-accent" size={22} />
-                    </div>
-                  )}
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 border border-border rounded-xl p-2">
+          {companyResumesQuery.isLoading && (
+            <div className="flex justify-center items-center h-32">
+              <Loader2 className="animate-spin text-accent" size={22} />
+            </div>
+          )}
 
-                  {companyResumesQuery.isError && <p className="text-danger text-sm text-center py-6">Não foi possível carregar os currículos.</p>}
+          {companyResumesQuery.isError && <p className="text-danger text-sm text-center py-6">Não foi possível carregar os currículos.</p>}
 
-                  {!companyResumesQuery.isLoading && !companyResumesQuery.isError && availableResumes.length === 0 && (
-                    <p className="text-muted text-sm text-center py-6">
-                      {existingResumeIds.length > 0 ? 'Todos os currículos já estão neste processo.' : 'Nenhum currículo encontrado.'}
-                    </p>
-                  )}
+          {!companyResumesQuery.isLoading && !companyResumesQuery.isError && availableResumes.length === 0 && (
+            <p className="text-muted text-sm text-center py-6">
+              {existingResumeIds.length > 0 ? 'Todos os currículos já estão neste processo.' : 'Nenhum currículo encontrado.'}
+            </p>
+          )}
 
-                  {availableResumes.map((resume) => {
-                    const name = resume.dataJson?.fullName ?? resume.fullName;
+          {availableResumes.map((resume) => {
+            const name = resume.dataJson?.fullName ?? resume.fullName;
 
-                    return (
-                      <label
-                        key={resume.id}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-soft transition cursor-pointer"
-                      >
-                        <Checkbox checked={selectedIds.includes(resume.id)} onChange={() => toggleResume(resume.id)} />
-                        <span className="text-sm text-foreground">{name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+            return (
+              <label
+                key={resume.id}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-soft transition cursor-pointer"
+              >
+                <Checkbox checked={selectedIds.includes(resume.id)} onChange={() => toggleResume(resume.id)} />
+                <span className="text-sm text-foreground">{name}</span>
+              </label>
+            );
+          })}
+        </div>
 
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    onClick={onCancel}
-                    className="flex-1 px-6 py-2 rounded-full border border-border text-muted hover:bg-surface-soft transition font-medium"
-                  >
-                    Cancelar
-                  </button>
+        <div className="flex gap-4">
+          <SecondaryButton onClick={onCancel} className="flex-1">
+            Cancelar
+          </SecondaryButton>
 
-                  <Button type="submit" variant="accent" loading={isSubmitting} disabled={selectedIds.length === 0} className="flex-1 !w-auto">
-                    Adicionar{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </ModalPortal>
+          <Button type="submit" variant="accent" loading={isSubmitting} disabled={selectedIds.length === 0} className="flex-1 !w-auto">
+            Adicionar{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { isAxiosError } from 'axios';
 import { Briefcase, Loader2, Trophy, UserPlus, User, XCircle } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils/date';
+import { extractErrorMessage } from '@/lib/utils/error';
+import { scoreTone } from '@/lib/utils/score';
 import { useSelectionProcessQuery } from '../hooks/use-selection-process-query';
 import { useCancelSelectionProcessMutation } from '../hooks/use-cancel-selection-process-mutation';
 import { useCloseSelectionProcessMutation } from '../hooks/use-close-selection-process-mutation';
@@ -21,23 +22,6 @@ import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from 
 import { JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES } from '@/features/job-openings/labels';
 import { ResumeModal } from '@/features/resumes/components/ResumeModal';
 import type { ResumeListItem } from '@/types/resumes';
-
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir esta ação.';
-
-function matchScoreTone(value: number): string {
-  if (value > 80) return 'bg-success';
-  if (value >= 60) return 'bg-accent';
-  if (value >= 30) return 'bg-[#FFD600] !text-[#001B30]';
-  return 'bg-border !text-muted';
-}
-
-function extractErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-  }
-
-  return DEFAULT_ERROR_MESSAGE;
-}
 
 export interface SelectionProcessDrawerProps {
   processId: string | null;
@@ -209,7 +193,7 @@ export function SelectionProcessDrawer({ processId, onClose }: SelectionProcessD
 
                   <span
                     title="Percentual de adesão do currículo aos requisitos da vaga"
-                    className={`ml-auto px-3 py-1 rounded-full text-white text-xs font-semibold shrink-0 ${matchScoreTone(entry.matchScore ?? 0)}`}
+                    className={`ml-auto px-3 py-1 rounded-full text-white text-xs font-semibold shrink-0 ${scoreTone(entry.matchScore ?? 0)}`}
                   >
                     {entry.matchScore ?? 0}% de adesão
                   </span>

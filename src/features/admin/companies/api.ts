@@ -1,9 +1,10 @@
 import { httpClient } from '@/lib/http/client';
+import type { Paginated, PaginationParams } from '@/types/pagination';
 import type { Status } from '@/types/domain';
 import type { CompanySummary, CreateCompanyInput, UpdateCompanyInput } from '@/types/company';
 
-export async function getCompanies(): Promise<CompanySummary[]> {
-  const { data } = await httpClient.get<CompanySummary[]>('/admin/companies');
+export async function getCompanies(params: PaginationParams = {}): Promise<Paginated<CompanySummary>> {
+  const { data } = await httpClient.get<Paginated<CompanySummary>>('/admin/companies', { params });
   return data;
 }
 

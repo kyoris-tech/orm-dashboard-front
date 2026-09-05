@@ -2,16 +2,21 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query/keys';
-import { getAuditLogs } from '../api';
+import { getAuditLogs, type GetAuditLogsParams } from '../api';
 
 const ALL_ENTITY_TYPES_VALUE = 'all';
 
 export { ALL_ENTITY_TYPES_VALUE };
 
-export function useAuditLogsQuery(page: number, entityType: string) {
+export function useAuditLogsQuery(params: GetAuditLogsParams) {
+  const normalizedParams: GetAuditLogsParams = {
+    ...params,
+    entityType: params.entityType === ALL_ENTITY_TYPES_VALUE ? undefined : params.entityType,
+  };
+
   return useQuery({
-    queryKey: queryKeys.auditLogs.list(page, entityType),
-    queryFn: () => getAuditLogs({ page, entityType: entityType === ALL_ENTITY_TYPES_VALUE ? undefined : entityType }),
+    queryKey: queryKeys.auditLogs.list(normalizedParams),
+    queryFn: () => getAuditLogs(normalizedParams),
     staleTime: 15_000,
   });
 }

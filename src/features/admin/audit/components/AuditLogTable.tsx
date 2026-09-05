@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
+import { Pagination } from '@/components/ui/Pagination';
+import { DEFAULT_PAGE_SIZE } from '@/types/pagination';
 import { Badge } from '@/components/ui/Badge';
 import { formatDateTime } from '@/lib/utils/date';
 import { useAuditLogsQuery } from '../hooks/use-audit-logs-query';
@@ -57,12 +58,16 @@ export interface AuditLogTableProps {
 }
 
 export function AuditLogTable({ page, entityType, onPageChange }: AuditLogTableProps) {
-  const auditLogsQuery = useAuditLogsQuery(page, entityType);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const auditLogsQuery = useAuditLogsQuery({ page, pageSize, entityType });
 
-  const data = useMemo(() => auditLogsQuery.data?.items ?? [], [auditLogsQuery.data]);
-  const total = auditLogsQuery.data?.total ?? 0;
-  const pageSize = auditLogsQuery.data?.pageSize ?? 25;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const data = useMemo(() => auditLogsQuery.data?.data ?? [], [auditLogsQuery.data]);
+  const pagination = auditLogsQuery.data?.pagination;
+
+  function handlePageSizeChange(nextPageSize: number) {
+    setPageSize(nextPageSize);
+    onPageChange(1);
+  }
 
   const table = useReactTable({
     data,
@@ -80,34 +85,15 @@ export function AuditLogTable({ page, entityType, onPageChange }: AuditLogTableP
         emptyMessage="Nenhum registro de auditoria encontrado."
       />
 
-      {total > 0 && (
-        <div className="flex items-center justify-between mt-4 text-sm text-muted">
-          <span>
-            Página {page} de {totalPages} · {total} registro{total === 1 ? '' : 's'}
-          </span>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onPageChange(page - 1)}
-              disabled={page <= 1}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-border hover:bg-surface-soft transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft size={14} />
-              Anterior
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onPageChange(page + 1)}
-              disabled={page >= totalPages}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-border hover:bg-surface-soft transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Próxima
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        </div>
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={onPageChange}
+          pageSize={pageSize}
+          onPageSizeChange={handlePageSizeChange}
+          totalLabel={`${pagination.totalItems} registro(s)`}
+        />
       )}
     </div>
   );

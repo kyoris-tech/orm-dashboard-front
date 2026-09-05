@@ -14,7 +14,7 @@ export interface ResumeCardProps {
 function ResumeCardComponent({ resume, onOpen, onDelete, onDownload, onHardDelete }: ResumeCardProps) {
   return (
     <div
-      className="bg-surface-soft gap-3 rounded-xl px-6 py-5 w-[14.625rem] min-w-[14.625rem] h-[14.938rem] flex-shrink-0 text-left border border-border cursor-pointer flex flex-col items-baseline justify-center"
+      className="bg-surface gap-3 rounded-xl px-6 py-5 w-[14.625rem] min-w-[14.625rem] h-[14.938rem] flex-shrink-0 text-left border border-border cursor-pointer flex flex-col items-baseline justify-center"
       onClick={() => onOpen(resume)}
     >
       <CircleFadingArrowUp className="text-muted h-8 w-8 font-normal" />
