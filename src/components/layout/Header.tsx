@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronDown, FileDown, House, LogOut, ShieldCheck } from 'lucide-react';
+import { BookOpen, Bell, ChevronDown, FileDown, House, LogOut, ShieldCheck } from 'lucide-react';
 import { OrmLogo } from '@/components/ui/OrmLogo';
 import { useLogoutMutation } from '@/features/auth/hooks/use-logout-mutation';
 import type { SessionUser } from '@/types/auth';
@@ -14,12 +14,16 @@ export interface HeaderProps {
 
 const PUBLIC_PATHS = ['/login'];
 
-const NAV_LINKS = [
+const BASE_NAV_LINKS = [
   { href: '/home', label: 'Início', icon: House },
   { href: '/metrics', label: 'Relatórios', icon: FileDown },
 ];
 
 const ADMIN_NAV_LINK = { href: '/admin', label: 'Administração', icon: ShieldCheck };
+
+const MANUAL_NAV_LINK = { href: '/manual', label: 'Manual', icon: BookOpen };
+
+const MENU_ITEM_CLASSES = 'flex items-center gap-2 px-4 py-2 hover:bg-surface-soft transition text-foreground';
 
 export function Header({ user }: HeaderProps) {
   const pathname = usePathname();
@@ -29,7 +33,13 @@ export function Header({ user }: HeaderProps) {
 
   const isPublicRoute = useMemo(() => PUBLIC_PATHS.includes(pathname), [pathname]);
   const showProfileMenu = Boolean(user) && !isPublicRoute;
-  const navLinks = useMemo(() => (user?.role === 'admin' ? [...NAV_LINKS, ADMIN_NAV_LINK] : NAV_LINKS), [user?.role]);
+  const navLinks = useMemo(
+    () =>
+      user?.role === 'admin'
+        ? [...BASE_NAV_LINKS, ADMIN_NAV_LINK, MANUAL_NAV_LINK]
+        : [...BASE_NAV_LINKS, MANUAL_NAV_LINK],
+    [user?.role],
+  );
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -77,7 +87,7 @@ export function Header({ user }: HeaderProps) {
 
                 <div className="flex flex-col py-2">
                   {navLinks.map(({ href, label, icon: Icon }) => (
-                    <Link key={href} href={href} className="flex items-center gap-2 px-4 py-2 hover:bg-surface-soft transition text-foreground">
+                    <Link key={href} href={href} className={MENU_ITEM_CLASSES}>
                       <Icon size={16} /> {label}
                     </Link>
                   ))}

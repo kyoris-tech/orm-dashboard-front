@@ -40,33 +40,59 @@ export const CAPABILITIES: readonly CapabilityCopy[] = [
 export interface PlanCopy {
   name: string;
   tagline: string;
+  priceLabel: string;
+  pricePeriodLabel?: string;
   maxUsersLabel: string;
   maxResumesLabel: string;
+  overageLabel: string;
+  ctaLabel: string;
   features: PlanFeature[];
   highlighted?: boolean;
 }
 
 export const PLAN_COPY: readonly PlanCopy[] = [
   {
-    name: 'Básico',
-    tagline: 'Para times pequenos começarem a organizar suas contratações.',
-    maxUsersLabel: 'Até 2 usuários',
-    maxResumesLabel: 'Até 50 currículos por mês',
+    name: 'Essencial',
+    tagline: 'Para consultorias pequenas e RH de uma pessoa começarem a organizar as contratações.',
+    priceLabel: 'R$ 197',
+    pricePeriodLabel: '/mês',
+    maxUsersLabel: 'Até 3 usuários',
+    maxResumesLabel: '100 currículos inclusos por mês',
+    overageLabel: 'Excedente: R$ 1,50 por currículo',
+    ctaLabel: 'Assinar Plano',
     features: [],
   },
   {
-    name: 'Pro',
+    name: 'Profissional',
     tagline: 'Para empresas que já publicam vagas e tocam processos seletivos completos.',
-    maxUsersLabel: 'Até 10 usuários',
-    maxResumesLabel: 'Até 500 currículos por mês',
+    priceLabel: 'R$ 597',
+    pricePeriodLabel: '/mês',
+    maxUsersLabel: 'Até 15 usuários',
+    maxResumesLabel: '600 currículos inclusos por mês',
+    overageLabel: 'Excedente: R$ 0,90 por currículo',
+    ctaLabel: 'Assinar Plano',
     features: ['jobOpenings', 'selectionProcesses', 'reports'],
     highlighted: true,
   },
   {
-    name: 'Enterprise',
-    tagline: 'Para operações de recrutamento em escala, sem limites de uso.',
+    name: 'Business',
+    tagline: 'Para operações com contratação contínua e time sem limite de usuários.',
+    priceLabel: 'R$ 1.497',
+    pricePeriodLabel: '/mês',
     maxUsersLabel: 'Usuários ilimitados',
-    maxResumesLabel: 'Currículos ilimitados',
+    maxResumesLabel: '2.000 currículos inclusos por mês',
+    overageLabel: 'Excedente: R$ 0,60 por currículo',
+    ctaLabel: 'Assinar Plano',
+    features: ['jobOpenings', 'selectionProcesses', 'reports'],
+  },
+  {
+    name: 'Enterprise',
+    tagline: 'Para volume alto ou para usar a Orm como motor de inteligência artificial via API.',
+    priceLabel: 'Sob consulta',
+    maxUsersLabel: 'Usuários ilimitados',
+    maxResumesLabel: 'Volume de currículos negociado',
+    overageLabel: 'Excedente a partir de R$ 0,30 por currículo',
+    ctaLabel: 'Falar com a equipe',
     features: ['jobOpenings', 'selectionProcesses', 'reports'],
   },
 ];

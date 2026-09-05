@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
+import { usePagination } from '@/lib/hooks/use-pagination';
 import { CandidateTable } from './CandidateTable';
 import { FiltersBar } from './FiltersBar';
 import type { CandidateFiltersState } from '../types';
@@ -14,8 +15,6 @@ const EMPTY_FILTERS: CandidateFiltersState = {
   languages: '',
 };
 
-const PAGE_SIZE = 10;
-
 export interface AnalyzeSectionProps {
   onSelectionProcessCreated?: () => void;
 }
@@ -24,7 +23,7 @@ export function AnalyzeSection({ onSelectionProcessCreated }: AnalyzeSectionProp
   const [draftFilters, setDraftFilters] = useState<CandidateFiltersState>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<CandidateFiltersState>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const { page, pageSize, setPage, setPageSize } = usePagination();
 
   const debouncedSearch = useDebouncedValue(search, 500);
 
@@ -53,9 +52,9 @@ export function AnalyzeSection({ onSelectionProcessCreated }: AnalyzeSectionProp
       ...appliedFilters,
       query: debouncedSearch,
       page,
-      pageSize: PAGE_SIZE,
+      pageSize,
     }),
-    [appliedFilters, debouncedSearch, page],
+    [appliedFilters, debouncedSearch, page, pageSize],
   );
 
   return (
@@ -70,7 +69,13 @@ export function AnalyzeSection({ onSelectionProcessCreated }: AnalyzeSectionProp
         onSearchChange={handleSearchChange}
       />
 
-      <CandidateTable filters={searchFilters} onPageChange={setPage} onSelectionProcessCreated={onSelectionProcessCreated} />
+      <CandidateTable
+        filters={searchFilters}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        onSelectionProcessCreated={onSelectionProcessCreated}
+      />
     </section>
   );
 }

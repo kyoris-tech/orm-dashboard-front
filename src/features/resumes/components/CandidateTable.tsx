@@ -32,7 +32,9 @@ import { scoreTone } from '@/lib/utils/score';
 
 export interface CandidateTableProps {
   filters: ResumeSearchFilters;
+  pageSize: number;
   onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
   onSelectionProcessCreated?: () => void;
 }
 
@@ -53,7 +55,13 @@ function toSafeText(value: string | undefined | null): string {
 
 const columnHelper = createColumnHelper<CandidateRow>();
 
-export function CandidateTable({ filters, onPageChange, onSelectionProcessCreated }: CandidateTableProps) {
+export function CandidateTable({
+  filters,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  onSelectionProcessCreated,
+}: CandidateTableProps) {
   const sessionUser = useSessionUser();
   const isAdmin = sessionUser?.role === 'admin';
 
@@ -287,12 +295,14 @@ export function CandidateTable({ filters, onPageChange, onSelectionProcessCreate
         }}
       />
 
-      {pagination && pagination.totalPages > 1 && (
+      {pagination && (
         <Pagination
           currentPage={pagination.page}
           totalPages={pagination.totalPages}
           onPageChange={onPageChange}
-          totalLabel={`Total Resultados: ${pagination.totalItems}`}
+          pageSize={pageSize}
+          onPageSizeChange={onPageSizeChange}
+          totalLabel={`${pagination.totalItems} candidato(s)`}
         />
       )}
 
