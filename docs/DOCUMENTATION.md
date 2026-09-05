@@ -287,6 +287,7 @@ Nem toda feature tem todos os arquivos — mas quando tem, é com esse nome.
 | Mexer na landing page | `src/features/marketing/` (textos em `content.ts`) |
 | Mexer nas páginas públicas de vaga | `src/features/public-job-opening/` |
 | Mexer no bloqueio por plano | `src/features/plan/components/PlanFeatureGate.tsx` |
+| Mexer no manual do usuário | `src/features/manual/` (conteúdo em `components/sections/`) |
 | Formatar telefone, CNPJ, moeda, data | `src/lib/utils/` |
 | Mudar SEO / metadata | o `page.tsx` da rota; `src/app/layout.tsx` para o global |
 | Mudar `robots.txt` / `sitemap.xml` | `src/app/robots.ts` / `src/app/sitemap.ts` |
@@ -755,6 +756,7 @@ restaurar. Reaproveite se precisar do mesmo comportamento em outro recurso.
 | `/login` | só sem sessão | `app/login/page.tsx` |
 | `/home` | autenticada | `app/(protected)/home/` |
 | `/metrics` | autenticada | `app/(protected)/metrics/page.tsx` |
+| `/manual` | autenticada | `app/(protected)/manual/page.tsx` |
 | `/admin` | autenticada + `role === 'admin'` | `app/(protected)/admin/page.tsx` |
 
 Rotas públicas exportam `metadata` completo (canonical, OpenGraph, Twitter);
@@ -789,6 +791,7 @@ Os handlers sob `public/` são os únicos que não chamam `requireSessionToken()
 | `selection-processes` | ciclo de vida do processo, candidatos, vínculo com vaga, conclusão | `components/SelectionProcessesTable.tsx` |
 | `metrics` | relatórios do recrutador (volume, conversão, tempo até contratação) | `components/MetricsView.tsx` |
 | `plan` | plano da empresa, uso e bloqueio de features | `components/PlanFeatureGate.tsx` |
+| `manual` | manual do usuário, com seções filtradas por papel | `components/ManualView.tsx`, registro em `sections.ts` |
 | `marketing` | landing pública | `components/LandingView.tsx`, textos em `content.ts` |
 | `public-job-opening` | vagas públicas e candidatura sem conta | `components/PublicJobOpeningView.tsx` |
 | `admin/companies` | empresas, plano, status, token de API | `components/CompaniesView.tsx` |
@@ -895,6 +898,12 @@ algo quebrou.
 
 **`middleware.ts` não existe.** No Next 16 o arquivo é `src/proxy.ts`, exportando
 `proxy` e `config`.
+
+**`public/` não é público.** O `matcher` do `proxy.ts` não exclui arquivos estáticos,
+então qualquer coisa em `public/` fica atrás da sessão — é o que mantém os prints do
+manual (`public/manual/*.png`) fora do alcance de quem não está logado. A exceção é
+`_next/image`, que está na lista de exclusão: usar `next/image` nesses arquivos os
+tornaria acessíveis sem sessão. Por isso `ManualFigure` usa `<img>` direto.
 
 ### Avisos de lint esperados
 

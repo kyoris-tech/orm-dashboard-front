@@ -986,6 +986,7 @@ components/, features/*/components/, app/   →  apresentação</code></pre>
             <tr><td>Mexer na landing page</td><td><code>src/features/marketing/</code> (textos em <code>content.ts</code>)</td></tr>
             <tr><td>Mexer nas páginas públicas de vaga</td><td><code>src/features/public-job-opening/</code></td></tr>
             <tr><td>Mexer no bloqueio por plano</td><td><code>src/features/plan/components/PlanFeatureGate.tsx</code></td></tr>
+            <tr><td>Mexer no manual do usuário</td><td><code>src/features/manual/</code> (conteúdo em <code>components/sections/</code>)</td></tr>
             <tr><td>Formatar telefone, CNPJ, moeda, data</td><td><code>src/lib/utils/</code></td></tr>
             <tr><td>Mudar SEO / metadata</td><td>o <code>page.tsx</code> da rota; <code>src/app/layout.tsx</code> para o global</td></tr>
             <tr><td>Mudar <code>robots.txt</code> / <code>sitemap.xml</code></td><td><code>src/app/robots.ts</code> / <code>src/app/sitemap.ts</code></td></tr>
@@ -1465,6 +1466,7 @@ export const ROLE_OPTIONS: SelectOption[] = [
             <tr><td><code>/login</code></td><td>só sem sessão</td><td><code>app/login/page.tsx</code></td></tr>
             <tr><td><code>/home</code></td><td>autenticada</td><td><code>app/(protected)/home/</code></td></tr>
             <tr><td><code>/metrics</code></td><td>autenticada</td><td><code>app/(protected)/metrics/page.tsx</code></td></tr>
+            <tr><td><code>/manual</code></td><td>autenticada</td><td><code>app/(protected)/manual/page.tsx</code></td></tr>
             <tr><td><code>/admin</code></td><td>autenticada + <code>role === 'admin'</code></td><td><code>app/(protected)/admin/page.tsx</code></td></tr>
           </tbody>
         </table>
@@ -1510,6 +1512,7 @@ export const ROLE_OPTIONS: SelectOption[] = [
             <tr><td><code>selection-processes</code></td><td>ciclo de vida do processo, candidatos, vínculo com vaga, conclusão</td><td><code>components/SelectionProcessesTable.tsx</code></td></tr>
             <tr><td><code>metrics</code></td><td>relatórios do recrutador (volume, conversão, tempo até contratação)</td><td><code>components/MetricsView.tsx</code></td></tr>
             <tr><td><code>plan</code></td><td>plano da empresa, uso e bloqueio de features</td><td><code>components/PlanFeatureGate.tsx</code></td></tr>
+            <tr><td><code>manual</code></td><td>manual do usuário, com seções filtradas por papel</td><td><code>components/ManualView.tsx</code>, registro em <code>sections.ts</code></td></tr>
             <tr><td><code>marketing</code></td><td>landing pública</td><td><code>components/LandingView.tsx</code>, textos em <code>content.ts</code></td></tr>
             <tr><td><code>public-job-opening</code></td><td>vagas públicas e candidatura sem conta</td><td><code>components/PublicJobOpeningView.tsx</code></td></tr>
             <tr><td><code>admin/companies</code></td><td>empresas, plano, status, token de API</td><td><code>components/CompaniesView.tsx</code></td></tr>
@@ -1642,6 +1645,20 @@ export const ROLE_OPTIONS: SelectOption[] = [
       <div class="trap">
         <p><b><code>middleware.ts</code> não existe.</b></p>
         <p>No Next 16 o arquivo é <code>src/proxy.ts</code>, exportando <code>proxy</code> e <code>config</code>.</p>
+      </div>
+
+      <div class="trap">
+        <p><b><code>public/</code> não é público.</b></p>
+        <p>
+          O <code>matcher</code> do <code>proxy.ts</code> não exclui arquivos estáticos, então qualquer coisa
+          em <code>public/</code> fica atrás da sessão — é o que mantém os prints do manual
+          (<code>public/manual/*.png</code>) fora do alcance de quem não está logado.
+        </p>
+        <p>
+          A exceção é <code>_next/image</code>, que está na lista de exclusão: usar <code>next/image</code>
+          nesses arquivos os tornaria acessíveis sem sessão. Por isso <code>ManualFigure</code> usa
+          <code>&lt;img&gt;</code> direto.
+        </p>
       </div>
 
       <h3>Avisos de lint esperados</h3>

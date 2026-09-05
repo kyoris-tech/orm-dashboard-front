@@ -18,16 +18,22 @@ export function PlanCard({ plan }: PlanCardProps) {
         plan.highlighted ? 'border-accent bg-white/[0.06] shadow-[0_0_40px_-12px_var(--color-accent)]' : 'border-white/15 bg-white/[0.03]',
       )}
     >
-      <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#05070c] px-4">
+      <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#05070c] px-4 whitespace-nowrap">
         <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
         {plan.highlighted && <span className="px-3 py-0.5 rounded-full bg-accent text-white text-xs font-medium">Mais popular</span>}
       </div>
 
-      <p className="text-sm text-white/60 leading-relaxed">{plan.tagline}</p>
+      <p className="text-sm text-white/60 leading-relaxed min-h-[4.5rem]">{plan.tagline}</p>
+
+      <p className="flex items-baseline justify-center gap-1">
+        <span className="text-3xl font-bold text-white">{plan.priceLabel}</span>
+        {plan.pricePeriodLabel && <span className="text-sm text-white/50">{plan.pricePeriodLabel}</span>}
+      </p>
 
       <div className="flex flex-col gap-1 rounded-2xl bg-white/5 py-5">
         <p className="font-semibold text-white">{plan.maxUsersLabel}</p>
         <p className="font-semibold text-white">{plan.maxResumesLabel}</p>
+        <p className="mt-1 text-xs text-white/50">{plan.overageLabel}</p>
       </div>
 
       <ul className="flex flex-col gap-2 text-sm text-left">
@@ -46,9 +52,9 @@ export function PlanCard({ plan }: PlanCardProps) {
         href={whatsappLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-dark"
+        className="mt-auto rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-dark"
       >
-        Assinar Plano
+        {plan.ctaLabel}
       </a>
     </div>
   );
