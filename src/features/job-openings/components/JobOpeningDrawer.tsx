@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { isAxiosError } from 'axios';
 import { Check, Copy, Loader2, Pencil, Users, XCircle } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
@@ -17,6 +16,7 @@ import { JobOpeningFormDialog } from './JobOpeningFormDialog';
 import { SelectionProcessDrawer } from '@/features/selection-processes/components/SelectionProcessDrawer';
 import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '@/features/selection-processes/labels';
 import type { CreateJobOpeningInput } from '@/types/job-opening';
+import { extractErrorMessage } from '@/lib/utils/error';
 
 function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
   const [copied, setCopied] = useState(false);
@@ -48,16 +48,6 @@ function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
       </div>
     </div>
   );
-}
-
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir esta ação.';
-
-function extractErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-  }
-
-  return DEFAULT_ERROR_MESSAGE;
 }
 
 export interface JobOpeningDrawerProps {

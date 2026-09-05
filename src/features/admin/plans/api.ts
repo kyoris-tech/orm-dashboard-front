@@ -1,8 +1,9 @@
 import { httpClient } from '@/lib/http/client';
+import type { Paginated, PaginationParams } from '@/types/pagination';
 import type { CreatePlanInput, Plan, UpdatePlanInput } from '@/types/company';
 
-export async function getPlans(): Promise<Plan[]> {
-  const { data } = await httpClient.get<Plan[]>('/admin/plans');
+export async function getPlans(params: PaginationParams = {}): Promise<Paginated<Plan>> {
+  const { data } = await httpClient.get<Paginated<Plan>>('/admin/plans', { params });
   return data;
 }
 

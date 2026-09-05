@@ -1,22 +1,15 @@
 import { httpClient } from '@/lib/http/client';
 import type { AuditLog } from '@/types/domain';
+import type { Paginated, PaginationParams } from '@/types/pagination';
 
-export interface AuditLogPage {
-  items: AuditLog[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-export interface GetAuditLogsParams {
-  page: number;
+export interface GetAuditLogsParams extends PaginationParams {
   entityType?: string;
 }
 
-export async function getAuditLogs({ page, entityType }: GetAuditLogsParams): Promise<AuditLogPage> {
-  const { data } = await httpClient.get<AuditLogPage>('/admin/audit-logs', {
+export async function getAuditLogs({ entityType, ...pagination }: GetAuditLogsParams): Promise<Paginated<AuditLog>> {
+  const { data } = await httpClient.get<Paginated<AuditLog>>('/admin/audit-logs', {
     params: {
-      page,
+      ...pagination,
       ...(entityType ? { entityType } : {}),
     },
   });

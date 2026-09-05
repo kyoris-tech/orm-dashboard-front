@@ -1,10 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { isAxiosError } from 'axios';
 import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { Pencil, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
+import { Pagination } from '@/components/ui/Pagination';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
@@ -15,21 +15,14 @@ import { useDeletePlanMutation } from '../hooks/use-delete-plan-mutation';
 import { PlanFormDialog } from './PlanFormDialog';
 import { FEATURE_LABELS } from '../../../plan/labels';
 import type { CreatePlanInput, Plan } from '@/types/company';
-
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir a ação.';
-
-function extractErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-  }
-
-  return DEFAULT_ERROR_MESSAGE;
-}
+import { extractErrorMessage } from '@/lib/utils/error';
+import { usePagination } from '@/lib/hooks/use-pagination';
 
 const columnHelper = createColumnHelper<Plan>();
 
 export function PlansTable() {
-  const plansQuery = usePlansQuery();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
+  const plansQuery = usePlansQuery({ page, pageSize });
   const updatePlanMutation = useUpdatePlanMutation();
   const deletePlanMutation = useDeletePlanMutation();
 
@@ -137,7 +130,8 @@ export function PlansTable() {
     [],
   );
 
-  const data = useMemo(() => plansQuery.data ?? [], [plansQuery.data]);
+  const data = useMemo(() => plansQuery.data?.data ?? [], [plansQuery.data]);
+  const pagination = plansQuery.data?.pagination;
 
   const table = useReactTable({
     data,
@@ -154,6 +148,17 @@ export function PlansTable() {
         errorMessage="Não foi possível carregar os planos."
         emptyMessage="Nenhum plano cadastrado ainda."
       />
+
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          totalLabel={`${pagination.totalItems} plano(s)`}
+        />
+      )}
 
       <PlanFormDialog
         isOpen={Boolean(editingPlan)}

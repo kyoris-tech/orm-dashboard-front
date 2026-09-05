@@ -1,3 +1,5 @@
+import type { PaginationParams } from '@/types/pagination';
+
 export const queryKeys = {
   resumes: {
     all: ['resumes'] as const,
@@ -9,25 +11,25 @@ export const queryKeys = {
   },
   selectionProcesses: {
     all: ['selection-processes'] as const,
-    list: () => [...queryKeys.selectionProcesses.all, 'list'] as const,
+    list: (params: PaginationParams = {}) => [...queryKeys.selectionProcesses.all, 'list', params] as const,
     detail: (id: string) => [...queryKeys.selectionProcesses.all, 'detail', id] as const,
   },
   jobOpenings: {
     all: ['job-openings'] as const,
-    list: () => [...queryKeys.jobOpenings.all, 'list'] as const,
+    list: (params: PaginationParams = {}) => [...queryKeys.jobOpenings.all, 'list', params] as const,
     detail: (id: string) => [...queryKeys.jobOpenings.all, 'detail', id] as const,
   },
   companies: {
     all: ['companies'] as const,
-    list: () => [...queryKeys.companies.all, 'list'] as const,
+    list: (params: PaginationParams = {}) => [...queryKeys.companies.all, 'list', params] as const,
   },
   users: {
     all: ['users'] as const,
-    list: () => [...queryKeys.users.all, 'list'] as const,
+    list: (params: PaginationParams = {}) => [...queryKeys.users.all, 'list', params] as const,
   },
   auditLogs: {
     all: ['audit-logs'] as const,
-    list: (page: number, entityType: string) => [...queryKeys.auditLogs.all, 'list', page, entityType] as const,
+    list: (params: PaginationParams & { entityType?: string } = {}) => [...queryKeys.auditLogs.all, 'list', params] as const,
   },
   plan: {
     all: ['plan'] as const,
@@ -35,7 +37,7 @@ export const queryKeys = {
   },
   plans: {
     all: ['plans'] as const,
-    list: () => [...queryKeys.plans.all, 'list'] as const,
+    list: (params: PaginationParams = {}) => [...queryKeys.plans.all, 'list', params] as const,
   },
   publicJobOpening: {
     all: ['public-job-opening'] as const,

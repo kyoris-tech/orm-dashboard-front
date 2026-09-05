@@ -13,6 +13,7 @@ import { useCompaniesQuery } from '../../companies/hooks/use-companies-query';
 import { exportUsersToCsv, exportUsersToPdf } from '../export';
 import { ALL_COMPANIES_VALUE } from '../constants';
 import type { CreateUserInput } from '@/types/user';
+import { ALL_ITEMS_PAGE_SIZE } from '@/types/pagination';
 
 type ExportFormat = 'csv' | 'pdf' | null;
 
@@ -23,12 +24,12 @@ export function UsersView() {
   const [companyFilter, setCompanyFilter] = useState(ALL_COMPANIES_VALUE);
   const createUserMutation = useCreateUserMutation();
   const exportUsersMutation = useExportUsersMutation();
-  const companiesQuery = useCompaniesQuery();
+  const companiesQuery = useCompaniesQuery({ pageSize: ALL_ITEMS_PAGE_SIZE });
 
   const companyFilterOptions = useMemo(
     () => [
       { value: ALL_COMPANIES_VALUE, label: 'Todas as empresas' },
-      ...(companiesQuery.data ?? []).map((company) => ({ value: company.id, label: company.name })),
+      ...(companiesQuery.data?.data ?? []).map((company) => ({ value: company.id, label: company.name })),
     ],
     [companiesQuery.data],
   );

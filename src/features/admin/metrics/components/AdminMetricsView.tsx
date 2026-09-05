@@ -13,6 +13,7 @@ import { useCompaniesQuery } from '../../companies/hooks/use-companies-query';
 import { useUsersQuery } from '../../users/hooks/use-users-query';
 import { computeAdminMetrics } from '../compute-admin-metrics';
 import { exportAdminMetricsToCsv } from '../export';
+import { ALL_ITEMS_PAGE_SIZE } from '@/types/pagination';
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 });
@@ -26,8 +27,8 @@ const PERIOD_OPTIONS = [
 
 export function AdminMetricsView() {
   const resumesQuery = useAdminResumesQuery();
-  const companiesQuery = useCompaniesQuery();
-  const usersQuery = useUsersQuery();
+  const companiesQuery = useCompaniesQuery({ pageSize: ALL_ITEMS_PAGE_SIZE });
+  const usersQuery = useUsersQuery({ pageSize: ALL_ITEMS_PAGE_SIZE });
   const [exportError, setExportError] = useState<string | null>(null);
   const [periodDays, setPeriodDays] = useState(15);
 
@@ -39,7 +40,7 @@ export function AdminMetricsView() {
       return null;
     }
 
-    return computeAdminMetrics(resumesQuery.data, companiesQuery.data, usersQuery.data, periodDays);
+    return computeAdminMetrics(resumesQuery.data, companiesQuery.data.data, usersQuery.data.data, periodDays);
   }, [resumesQuery.data, companiesQuery.data, usersQuery.data, periodDays]);
 
   function handleExport() {

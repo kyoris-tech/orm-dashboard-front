@@ -79,7 +79,7 @@ export function DataTable<TData>({
               <td
                 key={cell.id}
                 className={cn(
-                  'pl-4 pr-7 py-6 md:text-base text-sm text-foreground font-medium border-b border-border text-left',
+                  'bg-surface pl-4 pr-7 py-6 md:text-base text-sm text-foreground font-medium border-b border-border text-left',
                   index === 0 && 'rounded-l-xl',
                   index === row.getVisibleCells().length - 1 && 'rounded-r-xl',
                 )}

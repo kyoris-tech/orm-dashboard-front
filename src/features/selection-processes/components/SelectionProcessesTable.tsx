@@ -4,12 +4,14 @@ import { useMemo, useState } from 'react';
 import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { Loader2 } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
+import { Pagination } from '@/components/ui/Pagination';
 import { Badge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils/date';
 import { useSelectionProcessesQuery } from '../hooks/use-selection-processes-query';
 import { SelectionProcessDrawer } from './SelectionProcessDrawer';
 import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '../labels';
 import type { SelectionProcessSummary } from '@/types/selection-process';
+import { usePagination } from '@/lib/hooks/use-pagination';
 
 const columnHelper = createColumnHelper<SelectionProcessSummary>();
 
@@ -36,10 +38,12 @@ const columns = [
 ];
 
 export function SelectionProcessesTable() {
-  const selectionProcessesQuery = useSelectionProcessesQuery();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
+  const selectionProcessesQuery = useSelectionProcessesQuery({ page, pageSize });
   const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
 
-  const data = useMemo(() => selectionProcessesQuery.data ?? [], [selectionProcessesQuery.data]);
+  const data = useMemo(() => selectionProcessesQuery.data?.data ?? [], [selectionProcessesQuery.data]);
+  const pagination = selectionProcessesQuery.data?.pagination;
 
   const table = useReactTable({
     data,
@@ -64,6 +68,17 @@ export function SelectionProcessesTable() {
         emptyMessage="Nenhum processo seletivo aberto ainda. Selecione candidatos em Analisar Candidatos para abrir o primeiro."
         onRowClick={(row) => setSelectedProcessId(row.id)}
       />
+
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          totalLabel={`${pagination.totalItems} processo(s)`}
+        />
+      )}
 
       <SelectionProcessDrawer processId={selectedProcessId} onClose={() => setSelectedProcessId(null)} />
     </div>

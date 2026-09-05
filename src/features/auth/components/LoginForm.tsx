@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { isAxiosError } from 'axios';
 import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import { OrmLogo } from '@/components/ui/OrmLogo';
 import { FadeIn } from '@/components/motion/FadeIn';
+import { extractErrorMessage } from '@/lib/utils/error';
 import { useLoginMutation } from '../hooks/use-login-mutation';
 
 const REMEMBERED_EMAIL_KEY = 'orm:email';
@@ -22,19 +22,10 @@ export function LoginForm() {
   );
   const [password, setPassword] = useState('');
 
-  const errorMessage = useMemo(() => {
-    if (!loginMutation.isError) {
-      return null;
-    }
-
-    const error = loginMutation.error;
-
-    if (isAxiosError<{ message?: string }>(error)) {
-      return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-    }
-
-    return DEFAULT_ERROR_MESSAGE;
-  }, [loginMutation.isError, loginMutation.error]);
+  const errorMessage = useMemo(
+    () => (loginMutation.isError ? extractErrorMessage(loginMutation.error, DEFAULT_ERROR_MESSAGE) : null),
+    [loginMutation.isError, loginMutation.error],
+  );
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();

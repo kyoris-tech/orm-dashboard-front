@@ -1,8 +1,9 @@
 import { httpClient } from '@/lib/http/client';
+import type { Paginated, PaginationParams } from '@/types/pagination';
 import type { CreateJobOpeningInput, JobOpeningDetail, JobOpeningSummary, UpdateJobOpeningInput } from '@/types/job-opening';
 
-export async function getJobOpenings(): Promise<JobOpeningSummary[]> {
-  const { data } = await httpClient.get<JobOpeningSummary[]>('/job-openings');
+export async function getJobOpenings(params: PaginationParams = {}): Promise<Paginated<JobOpeningSummary>> {
+  const { data } = await httpClient.get<Paginated<JobOpeningSummary>>('/job-openings', { params });
   return data;
 }
 

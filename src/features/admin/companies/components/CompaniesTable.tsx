@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { isAxiosError } from 'axios';
 import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { Ban, CircleCheck, KeyRound, Pencil, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
+import { Pagination } from '@/components/ui/Pagination';
 import { Badge } from '@/components/ui/Badge';
+import { IconButton } from '@/components/ui/IconButton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils/date';
@@ -17,6 +18,8 @@ import { useRegenerateCompanyTokenMutation } from '../hooks/use-regenerate-compa
 import { EditCompanyDialog } from './EditCompanyDialog';
 import { NewTokenDialog } from './NewTokenDialog';
 import type { CompanySummary, CompanyStatus, UpdateCompanyInput } from '@/types/company';
+import { extractErrorMessage } from '@/lib/utils/error';
+import { usePagination } from '@/lib/hooks/use-pagination';
 
 const STATUS_LABELS: Record<CompanyStatus, string> = {
   ACTIVE: 'Ativa',
@@ -34,20 +37,11 @@ const STATUS_TONES: Record<CompanyStatus, 'neutral' | 'success' | 'danger'> = {
   DELETED: 'danger',
 };
 
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir a ação.';
-
-function extractErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-  }
-
-  return DEFAULT_ERROR_MESSAGE;
-}
-
 const columnHelper = createColumnHelper<CompanySummary>();
 
 export function CompaniesTable() {
-  const companiesQuery = useCompaniesQuery();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
+  const companiesQuery = useCompaniesQuery({ page, pageSize });
   const updateDetailsMutation = useUpdateCompanyDetailsMutation();
   const updateStatusMutation = useUpdateCompanyStatusMutation();
   const regenerateTokenMutation = useRegenerateCompanyTokenMutation();
@@ -155,33 +149,31 @@ export function CompaniesTable() {
 
           return (
             <div className="flex items-center gap-3">
-              <button
+              <IconButton
                 onClick={(event) => {
                   event.stopPropagation();
                   setEditingCompany(company);
                 }}
                 disabled={isDeleted}
                 title="Editar empresa"
-                className="text-muted hover:text-accent transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 aria-label="Editar empresa"
               >
                 <Pencil size={16} />
-              </button>
+              </IconButton>
 
-              <button
+              <IconButton
                 onClick={(event) => {
                   event.stopPropagation();
                   setRegeneratingCompany(company);
                 }}
                 disabled={isDeleted}
                 title="Gerar novo token"
-                className="text-muted hover:text-accent transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 aria-label="Gerar novo token"
               >
                 <KeyRound size={16} />
-              </button>
+              </IconButton>
 
-              <button
+              <IconButton
                 onClick={(event) => {
                   event.stopPropagation();
                   setBlockingCompany(company);
@@ -189,23 +181,22 @@ export function CompaniesTable() {
                 disabled={isDeleted}
                 title={isBlocked ? 'Ativar empresa' : 'Bloquear empresa'}
                 aria-label={isBlocked ? 'Ativar empresa' : 'Bloquear empresa'}
-                className="text-muted hover:text-accent transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isBlocked ? <CircleCheck size={16} /> : <Ban size={16} />}
-              </button>
+              </IconButton>
 
-              <button
+              <IconButton
                 onClick={(event) => {
                   event.stopPropagation();
                   setDeletingCompany(company);
                 }}
                 disabled={isDeleted}
                 title="Excluir empresa"
-                className="text-muted hover:text-danger transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                tone="danger"
                 aria-label="Excluir empresa"
               >
                 <Trash2 size={16} />
-              </button>
+              </IconButton>
             </div>
           );
         },
@@ -214,7 +205,8 @@ export function CompaniesTable() {
     [],
   );
 
-  const data = useMemo(() => companiesQuery.data ?? [], [companiesQuery.data]);
+  const data = useMemo(() => companiesQuery.data?.data ?? [], [companiesQuery.data]);
+  const pagination = companiesQuery.data?.pagination;
 
   const table = useReactTable({
     data,
@@ -231,6 +223,17 @@ export function CompaniesTable() {
         errorMessage="Não foi possível carregar as empresas."
         emptyMessage="Nenhuma empresa cadastrada ainda."
       />
+
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          totalLabel={`${pagination.totalItems} empresa(s)`}
+        />
+      )}
 
       <EditCompanyDialog
         isOpen={Boolean(editingCompany)}

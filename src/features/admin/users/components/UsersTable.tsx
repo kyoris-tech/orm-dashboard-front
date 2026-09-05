@@ -1,11 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { isAxiosError } from 'axios';
 import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { Ban, CircleCheck, KeyRound, Trash2 } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
+import { Pagination } from '@/components/ui/Pagination';
+import { usePagination } from '@/lib/hooks/use-pagination';
 import { Badge } from '@/components/ui/Badge';
+import { IconButton } from '@/components/ui/IconButton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils/date';
@@ -17,16 +19,7 @@ import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { ALL_COMPANIES_VALUE } from '../constants';
 import { ROLE_LABELS, USER_STATUS_LABELS, USER_STATUS_TONES } from '../labels';
 import type { UserSummary } from '@/types/user';
-
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir a ação.';
-
-function extractErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-  }
-
-  return DEFAULT_ERROR_MESSAGE;
-}
+import { extractErrorMessage } from '@/lib/utils/error';
 
 const columnHelper = createColumnHelper<UserSummary>();
 
@@ -36,7 +29,12 @@ export interface UsersTableProps {
 
 export function UsersTable({ companyFilter }: UsersTableProps) {
   const sessionUser = useSessionUser();
-  const usersQuery = useUsersQuery();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
+  const usersQuery = useUsersQuery({
+    page,
+    pageSize,
+    companyId: companyFilter === ALL_COMPANIES_VALUE ? undefined : companyFilter,
+  });
   const updateStatusMutation = useUpdateUserStatusMutation();
   const updatePasswordMutation = useUpdateUserPasswordMutation();
 
@@ -124,7 +122,7 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
 
           return (
             <div className="flex items-center gap-3">
-              <button
+              <IconButton
                 onClick={(event) => {
                   event.stopPropagation();
                   setChangingPasswordUser(user);
@@ -132,12 +130,11 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
                 disabled={isDeleted}
                 title="Alterar senha"
                 aria-label="Alterar senha"
-                className="text-muted hover:text-accent transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <KeyRound size={16} />
-              </button>
+              </IconButton>
 
-              <button
+              <IconButton
                 onClick={(event) => {
                   event.stopPropagation();
                   setBlockingUser(user);
@@ -145,12 +142,11 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
                 disabled={isDeleted}
                 title={isBlocked ? 'Ativar usuário' : 'Bloquear usuário'}
                 aria-label={isBlocked ? 'Ativar usuário' : 'Bloquear usuário'}
-                className="text-muted hover:text-accent transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isBlocked ? <CircleCheck size={16} /> : <Ban size={16} />}
-              </button>
+              </IconButton>
 
-              <button
+              <IconButton
                 onClick={(event) => {
                   event.stopPropagation();
                   setDeletingUser(user);
@@ -158,10 +154,10 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
                 disabled={isDeleted || isSelf}
                 title={isSelf ? 'Você não pode excluir seu próprio usuário' : 'Excluir usuário'}
                 aria-label="Excluir usuário"
-                className="text-muted hover:text-danger transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                tone="danger"
               >
                 <Trash2 size={16} />
-              </button>
+              </IconButton>
             </div>
           );
         },
@@ -170,13 +166,8 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
     [sessionUser?.id],
   );
 
-  const data = useMemo(
-    () =>
-      (usersQuery.data ?? []).filter(
-        (user) => user.status !== 'DELETED' && (companyFilter === ALL_COMPANIES_VALUE || user.companyId === companyFilter),
-      ),
-    [usersQuery.data, companyFilter],
-  );
+  const data = useMemo(() => usersQuery.data?.data ?? [], [usersQuery.data]);
+  const pagination = usersQuery.data?.pagination;
 
   const table = useReactTable({
     data,
@@ -193,6 +184,17 @@ export function UsersTable({ companyFilter }: UsersTableProps) {
         errorMessage="Não foi possível carregar os usuários."
         emptyMessage={companyFilter === ALL_COMPANIES_VALUE ? 'Nenhum usuário cadastrado ainda.' : 'Nenhum usuário para esta empresa.'}
       />
+
+      {pagination && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          totalLabel={`${pagination.totalItems} usuário(s)`}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={Boolean(blockingUser)}
