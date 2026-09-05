@@ -1,9 +1,14 @@
 import { httpClient } from '@/lib/http/client';
 import type { Status } from '@/types/domain';
+import type { Paginated, PaginationParams } from '@/types/pagination';
 import type { CreateUserInput, UserExportRecord, UserSummary } from '@/types/user';
 
-export async function getUsers(): Promise<UserSummary[]> {
-  const { data } = await httpClient.get<UserSummary[]>('/admin/users');
+export interface ListUsersParams extends PaginationParams {
+  companyId?: string;
+}
+
+export async function getUsers(params: ListUsersParams = {}): Promise<Paginated<UserSummary>> {
+  const { data } = await httpClient.get<Paginated<UserSummary>>('/admin/users', { params });
   return data;
 }
 

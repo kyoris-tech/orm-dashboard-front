@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { isAxiosError } from 'axios';
 import { CircleCheck, CircleFadingArrowUp } from 'lucide-react';
 import { ModalPortal } from '@/components/ui/ModalPortal';
+import { extractErrorMessage } from '@/lib/utils/error';
 import { useApplyMutation } from '../hooks/use-apply-mutation';
 
 const ALLOWED_TYPES = [
@@ -99,8 +99,7 @@ export function PublicApplyArea({ code }: PublicApplyAreaProps) {
     }
 
     if (applyMutation.isError) {
-      const error = applyMutation.error;
-      return isAxiosError<{ message?: string }>(error) ? (error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE) : DEFAULT_ERROR_MESSAGE;
+      return extractErrorMessage(applyMutation.error, DEFAULT_ERROR_MESSAGE);
     }
 
     return null;

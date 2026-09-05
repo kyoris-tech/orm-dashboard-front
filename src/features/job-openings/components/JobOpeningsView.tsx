@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { isAxiosError } from 'axios';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
@@ -9,16 +8,7 @@ import { JobOpeningFormDialog } from './JobOpeningFormDialog';
 import { JobOpeningsTable } from './JobOpeningsTable';
 import { useCreateJobOpeningMutation } from '../hooks/use-create-job-opening-mutation';
 import type { CreateJobOpeningInput } from '@/types/job-opening';
-
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir esta ação.';
-
-function extractErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-  }
-
-  return DEFAULT_ERROR_MESSAGE;
-}
+import { extractErrorMessage } from '@/lib/utils/error';
 
 export function JobOpeningsView() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);

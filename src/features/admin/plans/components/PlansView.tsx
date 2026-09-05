@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { isAxiosError } from 'axios';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
@@ -9,16 +8,7 @@ import { PlansTable } from './PlansTable';
 import { PlanFormDialog } from './PlanFormDialog';
 import { useCreatePlanMutation } from '../hooks/use-create-plan-mutation';
 import type { CreatePlanInput } from '@/types/company';
-
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir a ação.';
-
-function extractErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-  }
-
-  return DEFAULT_ERROR_MESSAGE;
-}
+import { extractErrorMessage } from '@/lib/utils/error';
 
 export function PlansView() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);

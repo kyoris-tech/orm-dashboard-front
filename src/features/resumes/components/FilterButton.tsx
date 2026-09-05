@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils/cn';
 export interface FilterButtonProps {
   label: string;
   icon: React.ReactNode;
+  placeholder?: string;
   isActive: boolean;
   isApplied: boolean;
   value: string;
@@ -17,7 +18,7 @@ export interface FilterButtonProps {
   onClose: () => void;
 }
 
-export function FilterButton({ label, icon, isActive, isApplied, value, onClick, onChange, onApply, onClear, onClose }: FilterButtonProps) {
+export function FilterButton({ label, icon, placeholder, isActive, isApplied, value, onClick, onChange, onApply, onClear, onClose }: FilterButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isFilled = value.trim() !== '';
 
@@ -62,9 +63,11 @@ export function FilterButton({ label, icon, isActive, isApplied, value, onClick,
             type="text"
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            placeholder={`Filtrar por ${label.toLowerCase()}...`}
+            placeholder={placeholder ?? `Filtrar por ${label.toLowerCase()}...`}
             className="w-full px-3 py-2 text-sm rounded-md outline-none border border-border text-foreground bg-surface-soft transition-all focus:border-accent"
           />
+
+          <p className="text-xs text-muted mt-2">Separe vários valores por vírgula.</p>
 
           <div className="flex gap-2 mt-3">
             <button

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { isAxiosError } from 'axios';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
@@ -9,16 +8,7 @@ import { CompaniesTable } from './CompaniesTable';
 import { CreateCompanyDialog } from './CreateCompanyDialog';
 import { useCreateCompanyMutation } from '../hooks/use-create-company-mutation';
 import type { CreateCompanyInput } from '@/types/company';
-
-const DEFAULT_ERROR_MESSAGE = 'Não foi possível concluir a ação.';
-
-function extractErrorMessage(error: unknown): string {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? DEFAULT_ERROR_MESSAGE;
-  }
-
-  return DEFAULT_ERROR_MESSAGE;
-}
+import { extractErrorMessage } from '@/lib/utils/error';
 
 export function CompaniesView() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
