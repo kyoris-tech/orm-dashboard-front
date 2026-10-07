@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { formatSalaryRange } from '@/lib/utils/currency';
 import { CONTRACT_TYPE_OPTIONS, WORK_MODEL_OPTIONS } from '../labels';
+import { JobOpeningVisibilityPicker } from './JobOpeningVisibilityPicker';
 import type { ContractType, JobOpeningDetail, CreateJobOpeningInput, WorkModel } from '@/types/job-opening';
 
 export interface JobOpeningFormDialogProps {
@@ -25,6 +26,7 @@ const EMPTY_FORM: CreateJobOpeningInput = {
   title: '',
   workModel: 'REMOTE',
   contractType: 'CLT',
+  visibility: 'PUBLIC',
   requirements: [],
   differentials: [],
   benefits: [],
@@ -39,6 +41,7 @@ function toFormState(jobOpening: JobOpeningDetail | null): CreateJobOpeningInput
     title: jobOpening.title,
     workModel: jobOpening.workModel,
     contractType: jobOpening.contractType,
+    visibility: jobOpening.visibility,
     salaryRange: jobOpening.salaryRange ?? undefined,
     requirements: jobOpening.requirements,
     differentials: jobOpening.differentials,
@@ -119,6 +122,11 @@ export function JobOpeningFormDialog({ isOpen, jobOpening, isSubmitting, onSubmi
             onChange={(event) => setForm((current) => ({ ...current, contractType: event.target.value as ContractType }))}
           />
         </div>
+
+        <JobOpeningVisibilityPicker
+          value={form.visibility}
+          onChange={(visibility) => setForm((current) => ({ ...current, visibility }))}
+        />
 
         {isEditing && form.salaryRange && (
           <p className="text-xs text-muted -mb-2">

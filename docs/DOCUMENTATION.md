@@ -787,13 +787,13 @@ Os handlers sob `public/` são os únicos que não chamam `requireSessionToken()
 |---|---|---|
 | `auth` | login e logout | `components/LoginForm.tsx` |
 | `resumes` | upload em lote, importações recentes, busca e filtros de candidatos, modal do currículo | `components/AnalyzeSection.tsx` |
-| `job-openings` | CRUD de vagas, drawer de detalhes, link público, picker reutilizável | `components/JobOpeningsView.tsx` |
+| `job-openings` | CRUD de vagas, visibilidade pública/privada, drawer de detalhes, link público, picker reutilizável | `components/JobOpeningsView.tsx` |
 | `selection-processes` | ciclo de vida do processo, candidatos, vínculo com vaga, conclusão | `components/SelectionProcessesTable.tsx` |
 | `metrics` | relatórios do recrutador (volume, conversão, tempo até contratação) | `components/MetricsView.tsx` |
 | `plan` | plano da empresa, uso e bloqueio de features | `components/PlanFeatureGate.tsx` |
 | `manual` | manual do usuário, com seções filtradas por papel | `components/ManualView.tsx`, registro em `sections.ts` |
 | `marketing` | landing pública | `components/LandingView.tsx`, textos em `content.ts` |
-| `public-job-opening` | vagas públicas e candidatura sem conta | `components/PublicJobOpeningView.tsx` |
+| `public-job-opening` | vagas públicas e candidatura sem conta — a listagem traz só vagas `PUBLIC`, a página de código abre qualquer vaga | `components/PublicJobOpeningView.tsx` |
 | `admin/companies` | empresas, plano, status, token de API | `components/CompaniesView.tsx` |
 | `admin/users` | usuários, senha, bloqueio, exportação LGPD | `components/UsersView.tsx` |
 | `admin/plans` | CRUD de planos | `components/PlansView.tsx` |
@@ -904,6 +904,26 @@ então qualquer coisa em `public/` fica atrás da sessão — é o que mantém o
 manual (`public/manual/*.png`) fora do alcance de quem não está logado. A exceção é
 `_next/image`, que está na lista de exclusão: usar `next/image` nesses arquivos os
 tornaria acessíveis sem sessão. Por isso `ManualFigure` usa `<img>` direto.
+
+**Vaga privada vaza por SEO, não pela listagem.** `visibility: 'PRIVATE'` é
+filtrado no backend (`findAllPublicOpen`), então a vitrine e o `sitemap.ts` já
+saem corretos de graça. O que não é automático é o `generateMetadata` de
+`/vagas/[codigo]`: a página de uma vaga privada precisa de
+`robots: { index: false, follow: false }` e sem `canonical`, senão o link cai no
+índice do Google e a vaga deixa de ser privada na prática. Qualquer novo lugar
+que liste vagas publicamente tem de repetir o filtro.
+
+**A pílula de seções mora no `Header`, não na página.** `/home` e `/admin` não
+renderizam o toggle: o `Header` o exibe entre o logo e o perfil (abaixo de `xl`
+ele desce para uma segunda linha). A seção ativa vive na URL (`?aba=`), lida por
+`useSectionParam` (`lib/hooks/use-section-param.ts`) tanto pelo toggle quanto
+pela view. Para uma nova seção, edite só `OPTIONS` em `ImportToggle.tsx` ou
+`AdminToggle.tsx` e renderize o conteúdo na view; não crie `useState` local para
+isso. O primeiro item da pílula é um botão azul (borda esquerda arredondada, direita reta) com o nome da página atual (prop
+`leading` do `SegmentedControl`); ao clicar abre a lista de páginas, a mesma do
+menu do perfil, com a atual destacada. O dropdown é renderizado em portal no
+`body` porque o contêiner da pílula tem `overflow-x-auto` e cortaria o menu.
+Páginas sem pílula (`/metrics`, `/manual`) mostram só o botão.
 
 ### Avisos de lint esperados
 

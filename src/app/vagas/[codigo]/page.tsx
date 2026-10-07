@@ -26,15 +26,13 @@ export async function generateMetadata({ params }: { params: Promise<{ codigo: s
 
   const title = `${jobOpening.title} na ${jobOpening.companyName} · Orm`;
   const description = `Vaga de ${jobOpening.title} na ${jobOpening.companyName}: ${WORK_MODEL_LABELS[jobOpening.workModel]}, ${CONTRACT_TYPE_LABELS[jobOpening.contractType]}. Candidate-se enviando seu currículo pela Orm Intelligence.`;
-  const isIndexable = jobOpening.status === 'OPEN';
+  const isIndexable = jobOpening.status === 'OPEN' && jobOpening.visibility === 'PUBLIC';
 
   return {
     title,
     description,
     robots: isIndexable ? undefined : { index: false, follow: false },
-    alternates: {
-      canonical: `/vagas/${codigo}`,
-    },
+    alternates: isIndexable ? { canonical: `/vagas/${codigo}` } : undefined,
     openGraph: {
       title,
       description,

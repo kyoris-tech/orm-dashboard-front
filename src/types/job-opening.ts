@@ -1,6 +1,7 @@
 export type WorkModel = 'REMOTE' | 'HYBRID' | 'ONSITE';
 export type ContractType = 'CLT' | 'PJ' | 'INTERNSHIP' | 'TEMPORARY';
 export type JobOpeningStatus = 'OPEN' | 'CLOSED' | 'CANCELLED';
+export type JobOpeningVisibility = 'PUBLIC' | 'PRIVATE';
 
 export interface JobOpeningSummary {
   id: string;
@@ -12,6 +13,7 @@ export interface JobOpeningSummary {
   differentials: string[];
   benefits: string[];
   status: JobOpeningStatus;
+  visibility: JobOpeningVisibility;
   publicCode: string;
   createdAt: string;
   _count: {
@@ -37,6 +39,7 @@ export interface CreateJobOpeningInput {
   title: string;
   workModel: WorkModel;
   contractType: ContractType;
+  visibility: JobOpeningVisibility;
   salaryRange?: string;
   requirements: string[];
   differentials: string[];

@@ -1,26 +1,34 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Copy, Loader2, Pencil, Users, XCircle } from 'lucide-react';
+import { Check, Copy, Globe, Loader2, Lock, Pencil, Users, XCircle } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils/date';
 import { buildJobOpeningPublicUrl } from '@/lib/utils/job-opening-link';
-import { CONTRACT_TYPE_LABELS, JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES, WORK_MODEL_LABELS } from '../labels';
+import {
+  CONTRACT_TYPE_LABELS,
+  JOB_OPENING_STATUS_LABELS,
+  JOB_OPENING_STATUS_TONES,
+  JOB_OPENING_VISIBILITY_LABELS,
+  JOB_OPENING_VISIBILITY_TONES,
+  WORK_MODEL_LABELS,
+} from '../labels';
 import { useJobOpeningQuery } from '../hooks/use-job-opening-query';
 import { useCancelJobOpeningMutation } from '../hooks/use-cancel-job-opening-mutation';
 import { useUpdateJobOpeningMutation } from '../hooks/use-update-job-opening-mutation';
 import { JobOpeningFormDialog } from './JobOpeningFormDialog';
 import { SelectionProcessDrawer } from '@/features/selection-processes/components/SelectionProcessDrawer';
 import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '@/features/selection-processes/labels';
-import type { CreateJobOpeningInput } from '@/types/job-opening';
+import type { CreateJobOpeningInput, JobOpeningVisibility } from '@/types/job-opening';
 import { extractErrorMessage } from '@/lib/utils/error';
 
-function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
+function JobOpeningShareLink({ publicCode, visibility }: { publicCode: string; visibility: JobOpeningVisibility }) {
   const [copied, setCopied] = useState(false);
   const shareUrl = buildJobOpeningPublicUrl(publicCode);
+  const isPrivate = visibility === 'PRIVATE';
 
   async function handleCopy() {
     try {
@@ -34,7 +42,7 @@ function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
 
   return (
     <div>
-      <p className="text-sm text-muted mb-2">Link para candidatos</p>
+      <p className="text-sm text-muted mb-2">{isPrivate ? 'Link privado para candidatos' : 'Link para candidatos'}</p>
       <div className="flex items-center gap-2 bg-surface-soft border border-border rounded-xl px-4 py-3">
         <span className="text-xs text-foreground break-all flex-1 text-left">{shareUrl}</span>
         <button
@@ -46,6 +54,12 @@ function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
           {copied ? <Check size={18} /> : <Copy size={18} />}
         </button>
       </div>
+
+      {isPrivate && (
+        <p className="text-xs text-muted mt-2">
+          Esta vaga não aparece na página de vagas do site. Só quem receber este link consegue abrir e se candidatar.
+        </p>
+      )}
     </div>
   );
 }
@@ -105,8 +119,16 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
 
         {jobOpening && (
           <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between">
-              <Badge tone={JOB_OPENING_STATUS_TONES[jobOpening.status]}>{JOB_OPENING_STATUS_LABELS[jobOpening.status]}</Badge>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="flex items-center gap-2">
+                <Badge tone={JOB_OPENING_STATUS_TONES[jobOpening.status]}>{JOB_OPENING_STATUS_LABELS[jobOpening.status]}</Badge>
+
+                <Badge tone={JOB_OPENING_VISIBILITY_TONES[jobOpening.visibility]} className="gap-1.5">
+                  {jobOpening.visibility === 'PRIVATE' ? <Lock size={12} /> : <Globe size={12} />}
+                  {JOB_OPENING_VISIBILITY_LABELS[jobOpening.visibility]}
+                </Badge>
+              </span>
+
               <span className="text-xs text-muted">Criada em {formatDate(jobOpening.createdAt)}</span>
             </div>
 
@@ -118,7 +140,7 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
               Editar vaga
             </button>
 
-            <JobOpeningShareLink publicCode={jobOpening.publicCode} />
+            <JobOpeningShareLink publicCode={jobOpening.publicCode} visibility={jobOpening.visibility} />
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
