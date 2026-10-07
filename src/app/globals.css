@@ -68,3 +68,16 @@ button:not(:disabled) {
 button:disabled {
   cursor: not-allowed;
 }
+
+@keyframes menu-drop {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.animate-menu-drop {
+  animation: menu-drop 180ms ease-out;
+}

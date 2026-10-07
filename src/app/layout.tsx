@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
 
   return (
     <html lang="pt-BR" className={`${outfit.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-surface-soft">
+      <body className="min-h-dvh flex flex-col bg-surface-soft">
         <Providers>
           <SessionProvider user={user}>
             <Header user={user} />

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { ImportToggle, type HomeSection } from '@/features/resumes/components/ImportToggle';
+import { useHomeSection } from '@/features/resumes/components/ImportToggle';
 import { UploadArea } from '@/features/resumes/components/UploadArea';
 import { RecentImports } from '@/features/resumes/components/RecentImports';
 import { AnalyzeSection } from '@/features/resumes/components/AnalyzeSection';
@@ -11,27 +10,25 @@ import { PlanFeatureGate } from '@/features/plan/components/PlanFeatureGate';
 import { PageContainer } from '@/components/layout/PageContainer';
 
 export function HomeView() {
-  const [activeSection, setActiveSection] = useState<HomeSection>('import');
+  const [activeSection, setActiveSection] = useHomeSection();
 
   return (
-    <PageContainer>
-      <ImportToggle active={activeSection} onChange={setActiveSection} />
-
+    <PageContainer className="pt-2">
       {activeSection === 'import' && (
-        <section className="mt-10 w-full max-w-3xl">
+        <section className="w-full max-w-3xl">
           <UploadArea />
           <RecentImports />
         </section>
       )}
 
       {activeSection === 'analyze' && (
-        <section className="mt-10 w-full">
+        <section className="w-full">
           <AnalyzeSection onSelectionProcessCreated={() => setActiveSection('proccess')} />
         </section>
       )}
 
       {activeSection === 'proccess' && (
-        <section className="mt-10 w-full max-w-6xl mx-auto">
+        <section className="w-full max-w-6xl mx-auto">
           <PlanFeatureGate feature="selectionProcesses">
             <SelectionProcessesTable />
           </PlanFeatureGate>
@@ -39,7 +36,7 @@ export function HomeView() {
       )}
 
       {activeSection === 'jobOpenings' && (
-        <section className="mt-10 w-full">
+        <section className="w-full">
           <PlanFeatureGate feature="jobOpenings">
             <JobOpeningsView />
           </PlanFeatureGate>

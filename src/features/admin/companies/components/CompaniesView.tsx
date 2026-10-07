@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
 import { CompaniesTable } from './CompaniesTable';
-import { CreateCompanyDialog } from './CreateCompanyDialog';
+import { CompanyFormDialog } from './CompanyFormDialog';
 import { useCreateCompanyMutation } from '../hooks/use-create-company-mutation';
 import type { CreateCompanyInput } from '@/types/company';
 import { extractErrorMessage } from '@/lib/utils/error';
@@ -23,7 +23,7 @@ export function CompaniesView() {
   }
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-0">
       <div className="flex items-center justify-end">
         <Button type="button" variant="accent" onClick={() => setIsCreateOpen(true)} className="!w-auto !py-2 !px-4 text-sm flex items-center gap-2">
           <Plus size={16} />
@@ -33,7 +33,8 @@ export function CompaniesView() {
 
       <CompaniesTable />
 
-      <CreateCompanyDialog
+      <CompanyFormDialog
+        mode="create"
         isOpen={isCreateOpen}
         isSubmitting={createCompanyMutation.isPending}
         onSubmit={handleCreate}

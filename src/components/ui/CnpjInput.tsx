@@ -1,6 +1,7 @@
 import { forwardRef, memo, useCallback } from 'react';
 import { Building2, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { FieldError } from './FieldError';
 import { formatCnpj } from '@/lib/utils/cnpj';
 
 export interface CnpjInputProps {
@@ -11,10 +12,12 @@ export interface CnpjInputProps {
   className?: string;
   required?: boolean;
   autoFocus?: boolean;
+  error?: string;
+  onBlur?: () => void;
 }
 
 function CnpjInputComponent(
-  { label, icon: Icon = Building2, value, onValueChange, className, required, autoFocus }: CnpjInputProps,
+  { label, icon: Icon = Building2, value, onValueChange, className, required, autoFocus, error, onBlur }: CnpjInputProps,
   ref: React.Ref<HTMLInputElement>,
 ) {
   const handleChange = useCallback(
@@ -37,13 +40,17 @@ function CnpjInputComponent(
           onChange={handleChange}
           required={required}
           autoFocus={autoFocus}
+          onBlur={onBlur}
+          aria-invalid={error ? true : undefined}
           maxLength={18}
           className={cn(
             'w-full h-[50px] pl-9 pr-4 py-2 rounded-full border border-border text-muted placeholder:text-muted',
+            error && 'border-danger',
             className,
           )}
         />
       </div>
+      <FieldError message={error} />
     </div>
   );
 }

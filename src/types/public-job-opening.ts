@@ -1,4 +1,4 @@
-import type { ContractType, JobOpeningStatus, WorkModel } from './job-opening';
+import type { ContractType, JobOpeningStatus, JobOpeningVisibility, WorkModel } from './job-opening';
 
 export interface PublicJobOpening {
   title: string;
@@ -10,6 +10,7 @@ export interface PublicJobOpening {
   differentials: string[];
   benefits: string[];
   status: JobOpeningStatus;
+  visibility: JobOpeningVisibility;
   createdAt: string;
 }
 

@@ -46,8 +46,8 @@ export function PublicJobOpeningCard({ jobOpening }: PublicJobOpeningCardProps) 
 
       {visibleRequirements.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {visibleRequirements.map((requirement) => (
-            <span key={requirement} className="px-2.5 py-1 rounded-full bg-surface-soft text-xs text-foreground">
+          {visibleRequirements.map((requirement, index) => (
+            <span key={`${requirement}-${index}`} className="px-2.5 py-1 rounded-full bg-surface-soft text-xs text-foreground">
               {requirement}
             </span>
           ))}

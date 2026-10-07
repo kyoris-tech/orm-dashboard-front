@@ -6,7 +6,14 @@ import { DataTable } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
 import { Badge } from '@/components/ui/Badge';
 import { formatDate } from '@/lib/utils/date';
-import { CONTRACT_TYPE_LABELS, JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES, WORK_MODEL_LABELS } from '../labels';
+import {
+  CONTRACT_TYPE_LABELS,
+  JOB_OPENING_STATUS_LABELS,
+  JOB_OPENING_STATUS_TONES,
+  JOB_OPENING_VISIBILITY_LABELS,
+  JOB_OPENING_VISIBILITY_TONES,
+  WORK_MODEL_LABELS,
+} from '../labels';
 import { useJobOpeningsQuery } from '../hooks/use-job-openings-query';
 import { JobOpeningDrawer } from './JobOpeningDrawer';
 import type { JobOpeningSummary } from '@/types/job-opening';
@@ -32,6 +39,12 @@ const columns = [
     id: 'selectionProcessCount',
     header: 'Processos vinculados',
     cell: (info) => info.getValue(),
+  }),
+  columnHelper.accessor('visibility', {
+    header: 'Visibilidade',
+    cell: (info) => (
+      <Badge tone={JOB_OPENING_VISIBILITY_TONES[info.getValue()]}>{JOB_OPENING_VISIBILITY_LABELS[info.getValue()]}</Badge>
+    ),
   }),
   columnHelper.accessor('status', {
     header: 'Status',
