@@ -10,6 +10,8 @@ import { FEATURE_OPTIONS } from '../../../plan/labels';
 import type { CreatePlanInput, Plan, PlanFeature } from '@/types/company';
 import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
 import { isSameValue } from '@/lib/utils/form';
+import { useFormValidation } from '@/lib/validation/use-form-validation';
+import { planFormSchema } from '../schemas';
 
 export interface PlanFormDialogProps {
   isOpen: boolean;
@@ -19,43 +21,57 @@ export interface PlanFormDialogProps {
   onCancel: () => void;
 }
 
-const EMPTY_FORM: CreatePlanInput = {
+interface PlanFormValues {
+  name: string;
+  maxUsersText: string;
+  maxResumesText: string;
+  features: PlanFeature[];
+}
+
+const EMPTY_FORM: PlanFormValues = {
   name: '',
-  maxUsers: null,
-  maxResumesPerMonth: null,
+  maxUsersText: '',
+  maxResumesText: '',
   features: [],
 };
 
-function toFormValue(value: number | null): string {
+function limitToText(value: number | null): string {
   return value === null ? '' : String(value);
 }
 
-function toLimitValue(value: string): number | null {
+function textToLimit(value: string): number | null {
   const trimmed = value.trim();
+  return trimmed === '' ? null : Number(trimmed);
+}
 
-  if (trimmed === '') {
-    return null;
+function toFormValues(plan: Plan | null): PlanFormValues {
+  if (!plan) {
+    return EMPTY_FORM;
   }
 
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
+  return {
+    name: plan.name,
+    maxUsersText: limitToText(plan.maxUsers),
+    maxResumesText: limitToText(plan.maxResumesPerMonth),
+    features: plan.features,
+  };
 }
 
 export function PlanFormDialog({ isOpen, plan, isSubmitting, onSubmit, onCancel }: PlanFormDialogProps) {
   const formId = useId();
-  const [form, setForm] = useState<CreatePlanInput>(EMPTY_FORM);
-  const [baseline, setBaseline] = useState<CreatePlanInput>(EMPTY_FORM);
+  const [form, setForm] = useState<PlanFormValues>(EMPTY_FORM);
+  const [baseline, setBaseline] = useState<PlanFormValues>(EMPTY_FORM);
+  const validation = useFormValidation(planFormSchema, form);
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
     setWasOpen(isOpen);
 
     if (isOpen) {
-      const initial = plan
-        ? { name: plan.name, maxUsers: plan.maxUsers, maxResumesPerMonth: plan.maxResumesPerMonth, features: plan.features }
-        : EMPTY_FORM;
+      const initial = toFormValues(plan);
       setForm(initial);
       setBaseline(initial);
+      validation.reset();
     }
   }
 
@@ -69,11 +85,18 @@ export function PlanFormDialog({ isOpen, plan, isSubmitting, onSubmit, onCancel 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (form.name.trim() === '') {
+    const data = validation.submit();
+
+    if (!data) {
       return;
     }
 
-    onSubmit({ ...form, name: form.name.trim() });
+    onSubmit({
+      name: data.name,
+      maxUsers: textToLimit(data.maxUsersText),
+      maxResumesPerMonth: textToLimit(data.maxResumesText),
+      features: data.features,
+    });
   }
 
   const isDirty = !isSameValue(form, baseline);
@@ -85,22 +108,15 @@ export function PlanFormDialog({ isOpen, plan, isSubmitting, onSubmit, onCancel 
         isOpen={isOpen}
         onClose={requestClose}
         className="max-h-[90vh]"
-        footer={
-          <ModalActions
-            formId={formId}
-            submitLabel={'Salvar plano'}
-            onCancel={requestClose}
-            isSubmitting={isSubmitting}
-            disabled={form.name.trim() === ''}
-          />
-        }
+        footer={<ModalActions formId={formId} submitLabel={'Salvar plano'} onCancel={requestClose} isSubmitting={isSubmitting} />}
       >
         <h2 className="text-2xl font-semibold text-accent mb-6 text-center">{plan ? 'Editar plano' : 'Adicionar plano'}</h2>
 
-        <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form id={formId} onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
           <Input
             label="Nome do plano"
             icon={Award}
+            {...validation.field('name')}
             value={form.name}
             onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
             required
@@ -112,16 +128,18 @@ export function PlanFormDialog({ isOpen, plan, isSubmitting, onSubmit, onCancel 
               label="Máx. usuários (vazio = ilimitado)"
               type="number"
               min={1}
-              value={toFormValue(form.maxUsers)}
-              onChange={(event) => setForm((current) => ({ ...current, maxUsers: toLimitValue(event.target.value) }))}
+              value={form.maxUsersText}
+              onChange={(event) => setForm((current) => ({ ...current, maxUsersText: event.target.value }))}
+              {...validation.field('maxUsersText')}
             />
 
             <Input
               label="Currículos/mês (vazio = ilimitado)"
               type="number"
               min={1}
-              value={toFormValue(form.maxResumesPerMonth)}
-              onChange={(event) => setForm((current) => ({ ...current, maxResumesPerMonth: toLimitValue(event.target.value) }))}
+              value={form.maxResumesText}
+              onChange={(event) => setForm((current) => ({ ...current, maxResumesText: event.target.value }))}
+              {...validation.field('maxResumesText')}
             />
           </div>
 

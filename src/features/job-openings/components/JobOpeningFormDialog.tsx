@@ -14,6 +14,8 @@ import { JobOpeningVisibilityPicker } from './JobOpeningVisibilityPicker';
 import type { ContractType, JobOpeningDetail, CreateJobOpeningInput, WorkModel } from '@/types/job-opening';
 import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
 import { isSameValue } from '@/lib/utils/form';
+import { useFormValidation } from '@/lib/validation/use-form-validation';
+import { jobOpeningFormSchema } from '../schemas';
 
 export interface JobOpeningFormDialogProps {
   isOpen: boolean;
@@ -57,6 +59,7 @@ export function JobOpeningFormDialog({ isOpen, jobOpening, isSubmitting, onSubmi
   const [salaryMin, setSalaryMin] = useState<number | undefined>(undefined);
   const [salaryMax, setSalaryMax] = useState<number | undefined>(undefined);
   const [baseline, setBaseline] = useState<CreateJobOpeningInput>(() => toFormState(jobOpening));
+  const validation = useFormValidation(jobOpeningFormSchema, { ...form, salaryMin, salaryMax });
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
@@ -68,6 +71,7 @@ export function JobOpeningFormDialog({ isOpen, jobOpening, isSubmitting, onSubmi
       setBaseline(initial);
       setSalaryMin(undefined);
       setSalaryMax(undefined);
+      validation.reset();
     }
   }
 
@@ -81,15 +85,17 @@ export function JobOpeningFormDialog({ isOpen, jobOpening, isSubmitting, onSubmi
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (form.title.trim() === '') {
+    const data = validation.submit();
+
+    if (!data) {
       return;
     }
 
-    const newSalaryRange = formatSalaryRange(salaryMin, salaryMax);
+    const newSalaryRange = formatSalaryRange(data.salaryMin, data.salaryMax);
 
     onSubmit({
       ...form,
-      title: form.title.trim(),
+      title: data.title,
       salaryRange: newSalaryRange ?? form.salaryRange,
     });
 
@@ -121,10 +127,11 @@ export function JobOpeningFormDialog({ isOpen, jobOpening, isSubmitting, onSubmi
       >
         <h2 className="text-2xl font-semibold text-accent mb-6 text-center">{isEditing ? 'Editar vaga' : 'Adicionar vaga'}</h2>
 
-        <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form id={formId} onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
           <Input
             label="Título da vaga"
             icon={Briefcase}
+            {...validation.field('title')}
             value={form.title}
             onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
             required
@@ -158,12 +165,14 @@ export function JobOpeningFormDialog({ isOpen, jobOpening, isSubmitting, onSubmi
               label={isEditing ? 'Novo salário mínimo (opcional)' : 'Salário mínimo (opcional)'}
               value={salaryMin}
               onValueChange={setSalaryMin}
+              {...validation.field('salaryMin')}
             />
 
             <CurrencyInput
               label={isEditing ? 'Novo salário máximo (opcional)' : 'Salário máximo (opcional)'}
               value={salaryMax}
               onValueChange={setSalaryMax}
+              {...validation.field('salaryMax')}
             />
           </div>
 

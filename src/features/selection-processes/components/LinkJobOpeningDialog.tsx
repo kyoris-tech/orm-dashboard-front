@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { JobOpeningPicker } from '@/features/job-openings/components/JobOpeningPicker';
 import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
+import { useFormValidation } from '@/lib/validation/use-form-validation';
+import { linkJobOpeningSchema } from '../schemas';
 
 export interface LinkJobOpeningDialogProps {
   isOpen: boolean;
@@ -17,6 +19,7 @@ export interface LinkJobOpeningDialogProps {
 
 export function LinkJobOpeningDialog({ isOpen, currentJobOpeningId, isSubmitting, onSubmit, onCancel }: LinkJobOpeningDialogProps) {
   const [jobOpeningId, setJobOpeningId] = useState(currentJobOpeningId ?? '');
+  const validation = useFormValidation(linkJobOpeningSchema, { jobOpeningId });
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
@@ -30,11 +33,13 @@ export function LinkJobOpeningDialog({ isOpen, currentJobOpeningId, isSubmitting
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (jobOpeningId.trim() === '') {
+    const data = validation.submit();
+
+    if (!data) {
       return;
     }
 
-    onSubmit(jobOpeningId);
+    onSubmit(data.jobOpeningId);
   }
 
   const isDirty = jobOpeningId !== (currentJobOpeningId ?? '');
@@ -56,7 +61,7 @@ export function LinkJobOpeningDialog({ isOpen, currentJobOpeningId, isSubmitting
               Cancelar
             </SecondaryButton>
 
-            <Button type="submit" variant="accent" loading={isSubmitting} disabled={jobOpeningId.trim() === ''} className="flex-1 !w-auto">
+            <Button type="submit" variant="accent" loading={isSubmitting} disabled={!validation.isValid} className="flex-1 !w-auto">
               Vincular
             </Button>
           </div>

@@ -14,6 +14,8 @@ import type { RoleName } from '@/types/domain';
 import { ALL_ITEMS_PAGE_SIZE } from '@/types/pagination';
 import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
 import { isSameValue } from '@/lib/utils/form';
+import { useFormValidation } from '@/lib/validation/use-form-validation';
+import { createUserSchema } from '../schemas';
 
 export interface CreateUserDialogProps {
   isOpen: boolean;
@@ -34,6 +36,7 @@ export function CreateUserDialog({ isOpen, isSubmitting, onSubmit, onCancel }: C
   const formId = useId();
   const companiesQuery = useCompaniesQuery({ pageSize: ALL_ITEMS_PAGE_SIZE });
   const [form, setForm] = useState<CreateUserInput>(EMPTY_FORM);
+  const validation = useFormValidation(createUserSchema, form);
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
@@ -41,6 +44,7 @@ export function CreateUserDialog({ isOpen, isSubmitting, onSubmit, onCancel }: C
 
     if (isOpen) {
       setForm(EMPTY_FORM);
+      validation.reset();
     }
   }
 
@@ -52,16 +56,16 @@ export function CreateUserDialog({ isOpen, isSubmitting, onSubmit, onCancel }: C
     [companiesQuery.data],
   );
 
-  const isFormValid = form.name.trim() !== '' && form.email.trim() !== '' && form.password.trim().length >= 6 && form.companyId !== '';
-
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (!isFormValid) {
+    const data = validation.submit();
+
+    if (!data) {
       return;
     }
 
-    onSubmit({ ...form, name: form.name.trim(), email: form.email.trim() });
+    onSubmit(data);
   }
 
   const isDirty = !isSameValue(form, EMPTY_FORM);
@@ -73,16 +77,15 @@ export function CreateUserDialog({ isOpen, isSubmitting, onSubmit, onCancel }: C
         isOpen={isOpen}
         onClose={requestClose}
         className="max-h-[90vh]"
-        footer={
-          <ModalActions formId={formId} submitLabel={'Salvar usuário'} onCancel={requestClose} isSubmitting={isSubmitting} disabled={!isFormValid} />
-        }
+        footer={<ModalActions formId={formId} submitLabel={'Salvar usuário'} onCancel={requestClose} isSubmitting={isSubmitting} />}
       >
         <h2 className="text-2xl font-semibold text-accent mb-6 text-center">Adicionar usuário</h2>
 
-        <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form id={formId} onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
           <Input
             label="Nome"
             icon={User}
+            {...validation.field('name')}
             value={form.name}
             onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
             required
@@ -93,6 +96,7 @@ export function CreateUserDialog({ isOpen, isSubmitting, onSubmit, onCancel }: C
             label="E-mail"
             icon={Mail}
             type="email"
+            {...validation.field('email')}
             value={form.email}
             onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
             required
@@ -103,7 +107,7 @@ export function CreateUserDialog({ isOpen, isSubmitting, onSubmit, onCancel }: C
             value={form.password}
             onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
             required
-            minLength={6}
+            {...validation.field('password')}
             autoComplete="new-password"
           />
 
@@ -114,6 +118,7 @@ export function CreateUserDialog({ isOpen, isSubmitting, onSubmit, onCancel }: C
             onChange={(event) => setForm((current) => ({ ...current, companyId: event.target.value }))}
             disabled={companiesQuery.isLoading || companyOptions.length === 0}
             required
+            {...validation.field('companyId')}
           />
 
           <Select

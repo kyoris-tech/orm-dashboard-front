@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import type { UserSummary } from '@/types/user';
 import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
+import { useFormValidation } from '@/lib/validation/use-form-validation';
+import { changePasswordSchema } from '../schemas';
 
 export interface ChangePasswordDialogProps {
   isOpen: boolean;
@@ -18,6 +20,7 @@ export interface ChangePasswordDialogProps {
 
 export function ChangePasswordDialog({ isOpen, user, isSubmitting, onSubmit, onCancel }: ChangePasswordDialogProps) {
   const [password, setPassword] = useState('');
+  const validation = useFormValidation(changePasswordSchema, { password });
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
@@ -25,19 +28,20 @@ export function ChangePasswordDialog({ isOpen, user, isSubmitting, onSubmit, onC
 
     if (isOpen) {
       setPassword('');
+      validation.reset();
     }
   }
-
-  const isValid = password.trim().length >= 6;
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (!isValid) {
+    const data = validation.submit();
+
+    if (!data) {
       return;
     }
 
-    onSubmit(password);
+    onSubmit(data.password);
   }
 
   const isDirty = password !== '';
@@ -51,13 +55,13 @@ export function ChangePasswordDialog({ isOpen, user, isSubmitting, onSubmit, onC
           Defina uma nova senha para <span className="font-medium text-foreground">{user?.name}</span>.
         </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
           <PasswordInput
             label="Nova senha (mínimo 6 caracteres)"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
-            minLength={6}
+            {...validation.field('password')}
             autoComplete="new-password"
             autoFocus
           />
@@ -67,7 +71,7 @@ export function ChangePasswordDialog({ isOpen, user, isSubmitting, onSubmit, onC
               Cancelar
             </SecondaryButton>
 
-            <Button type="submit" variant="accent" loading={isSubmitting} disabled={!isValid} className="flex-1">
+            <Button type="submit" variant="accent" loading={isSubmitting} className="flex-1">
               Salvar senha
             </Button>
           </div>

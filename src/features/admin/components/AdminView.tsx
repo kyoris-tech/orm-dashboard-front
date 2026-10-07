@@ -12,7 +12,7 @@ export function AdminView() {
   const [activeSection] = useAdminSection();
 
   return (
-    <PageContainer className="pt-6">
+    <PageContainer className="pt-2">
       {activeSection === 'companies' && (
         <section className="w-full max-w-6xl mx-auto">
           <CompaniesView />

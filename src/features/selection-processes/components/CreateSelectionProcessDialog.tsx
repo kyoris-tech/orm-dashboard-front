@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { JobOpeningPicker } from '@/features/job-openings/components/JobOpeningPicker';
 import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
+import { useFormValidation } from '@/lib/validation/use-form-validation';
+import { createSelectionProcessSchema } from '../schemas';
 
 export interface CreateSelectionProcessDialogProps {
   isOpen: boolean;
@@ -20,6 +22,7 @@ export interface CreateSelectionProcessDialogProps {
 export function CreateSelectionProcessDialog({ isOpen, candidateCount, isSubmitting, onSubmit, onCancel }: CreateSelectionProcessDialogProps) {
   const [name, setName] = useState('');
   const [jobOpeningId, setJobOpeningId] = useState('');
+  const validation = useFormValidation(createSelectionProcessSchema, { name, jobOpeningId });
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
@@ -28,17 +31,20 @@ export function CreateSelectionProcessDialog({ isOpen, candidateCount, isSubmitt
     if (isOpen) {
       setName('');
       setJobOpeningId('');
+      validation.reset();
     }
   }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (name.trim() === '') {
+    const data = validation.submit();
+
+    if (!data) {
       return;
     }
 
-    onSubmit(name.trim(), jobOpeningId);
+    onSubmit(data.name, data.jobOpeningId);
   }
 
   const isDirty = name !== '' || jobOpeningId !== '';
@@ -52,8 +58,16 @@ export function CreateSelectionProcessDialog({ isOpen, candidateCount, isSubmitt
           {candidateCount} candidato{candidateCount === 1 ? '' : 's'} selecionado{candidateCount === 1 ? '' : 's'}.
         </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6 items-center">
-          <Input label="Nome do processo" icon={Briefcase} value={name} onChange={(event) => setName(event.target.value)} required autoFocus />
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6 items-center">
+          <Input
+            label="Nome do processo"
+            icon={Briefcase}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+            autoFocus
+            {...validation.field('name')}
+          />
 
           <div className="w-full flex flex-col gap-2 text-left">
             <span className="text-sm font-medium text-foreground">Vincular a uma vaga (opcional)</span>

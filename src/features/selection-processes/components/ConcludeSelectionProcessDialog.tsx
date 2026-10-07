@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import type { SelectionProcessCandidateEntry } from '@/types/selection-process';
 import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
+import { useFormValidation } from '@/lib/validation/use-form-validation';
+import { concludeSelectionProcessSchema } from '../schemas';
 
 export interface ConcludeSelectionProcessDialogProps {
   isOpen: boolean;
@@ -19,6 +21,7 @@ export interface ConcludeSelectionProcessDialogProps {
 
 export function ConcludeSelectionProcessDialog({ isOpen, candidates, isSubmitting, onSubmit, onCancel }: ConcludeSelectionProcessDialogProps) {
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
+  const validation = useFormValidation(concludeSelectionProcessSchema, { resumeId: selectedResumeId ?? '' });
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
@@ -32,11 +35,13 @@ export function ConcludeSelectionProcessDialog({ isOpen, candidates, isSubmittin
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (!selectedResumeId) {
+    const data = validation.submit();
+
+    if (!data) {
       return;
     }
 
-    onSubmit(selectedResumeId);
+    onSubmit(data.resumeId);
   }
 
   const isDirty = selectedResumeId !== null;
@@ -77,7 +82,7 @@ export function ConcludeSelectionProcessDialog({ isOpen, candidates, isSubmittin
               type="submit"
               variant="accent"
               loading={isSubmitting}
-              disabled={!selectedResumeId}
+              disabled={!validation.isValid}
               className="flex-1 !w-auto flex items-center justify-center gap-2"
             >
               <Trophy size={16} />

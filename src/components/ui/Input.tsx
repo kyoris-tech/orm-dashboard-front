@@ -1,13 +1,15 @@
 import { forwardRef, memo } from 'react';
 import { User, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { FieldError } from './FieldError';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon?: LucideIcon;
+  error?: string;
 }
 
-function InputComponent({ label, icon: Icon = User, className, ...props }: InputProps, ref: React.Ref<HTMLInputElement>) {
+function InputComponent({ label, icon: Icon = User, error, className, ...props }: InputProps, ref: React.Ref<HTMLInputElement>) {
   return (
     <div className="flex flex-col w-full">
       <div className="relative">
@@ -16,12 +18,15 @@ function InputComponent({ label, icon: Icon = User, className, ...props }: Input
           {...props}
           ref={ref}
           placeholder={label}
+          aria-invalid={error ? true : undefined}
           className={cn(
             'w-full h-[50px] pl-9 pr-4 py-2 rounded-full border border-border text-muted placeholder:text-muted',
+            error && 'border-danger',
             className,
           )}
         />
       </div>
+      <FieldError message={error} />
     </div>
   );
 }

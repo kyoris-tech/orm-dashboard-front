@@ -9,6 +9,8 @@ import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { useCompanyResumesQuery } from '@/features/resumes/hooks/use-company-resumes-query';
 import { Spinner } from '@/components/ui/Spinner';
 import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
+import { useFormValidation } from '@/lib/validation/use-form-validation';
+import { addCandidatesSchema } from '../schemas';
 
 export interface AddCandidatesDialogProps {
   isOpen: boolean;
@@ -22,6 +24,7 @@ export function AddCandidatesDialog({ isOpen, existingResumeIds, isSubmitting, o
   const companyResumesQuery = useCompanyResumesQuery();
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const validation = useFormValidation(addCandidatesSchema, { resumeIds: selectedIds });
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
@@ -56,11 +59,13 @@ export function AddCandidatesDialog({ isOpen, existingResumeIds, isSubmitting, o
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (selectedIds.length === 0) {
+    const data = validation.submit();
+
+    if (!data) {
       return;
     }
 
-    onSubmit(selectedIds);
+    onSubmit(data.resumeIds);
   }
 
   const isDirty = selectedIds.length > 0;
@@ -102,7 +107,7 @@ export function AddCandidatesDialog({ isOpen, existingResumeIds, isSubmitting, o
               Cancelar
             </SecondaryButton>
 
-            <Button type="submit" variant="accent" loading={isSubmitting} disabled={selectedIds.length === 0} className="flex-1 !w-auto">
+            <Button type="submit" variant="accent" loading={isSubmitting} disabled={!validation.isValid} className="flex-1 !w-auto">
               Adicionar{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
             </Button>
           </div>

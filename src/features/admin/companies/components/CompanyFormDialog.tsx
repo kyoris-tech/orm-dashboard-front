@@ -11,6 +11,8 @@ import { usePlansQuery } from '../../plans/hooks/use-plans-query';
 import type { CompanySummary, CreateCompanyInput, UpdateCompanyInput } from '@/types/company';
 import { ALL_ITEMS_PAGE_SIZE } from '@/types/pagination';
 import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
+import { useFormValidation } from '@/lib/validation/use-form-validation';
+import { createCompanySchema, editCompanySchema } from '../schemas';
 import { isSameValue } from '@/lib/utils/form';
 
 interface CompanyFormBaseProps {
@@ -80,6 +82,10 @@ export function CompanyFormDialog(props: CompanyFormDialogProps) {
   const [form, setForm] = useState<CompanyFormValues>(EMPTY_FORM);
   const [billingDayText, setBillingDayText] = useState('');
   const [baseline, setBaseline] = useState({ form: EMPTY_FORM, billingDayText: '' });
+  const values = { ...form, billingDayText };
+  const createValidation = useFormValidation(createCompanySchema, values);
+  const editValidation = useFormValidation(editCompanySchema, values);
+  const validation = isEditing ? editValidation : createValidation;
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
@@ -91,14 +97,12 @@ export function CompanyFormDialog(props: CompanyFormDialogProps) {
       setForm(initialForm);
       setBillingDayText(initialBillingDay);
       setBaseline({ form: initialForm, billingDayText: initialBillingDay });
+      createValidation.reset();
+      editValidation.reset();
     }
   }
 
   const planOptions = (plansQuery.data?.data ?? []).map((plan) => ({ value: plan.id, label: plan.name }));
-
-  const isFormValid = isEditing
-    ? form.name.trim() !== ''
-    : form.name.trim() !== '' && form.email.trim() !== '' && form.cnpj.trim() !== '' && form.planId !== '';
 
   function updateField(field: keyof CompanyFormValues, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -107,30 +111,45 @@ export function CompanyFormDialog(props: CompanyFormDialogProps) {
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (!isFormValid) {
-      return;
-    }
-
-    const trimmedName = form.name.trim();
-
     if (props.mode === 'edit') {
-      const billingDay = billingDayText.trim() === '' ? null : Number(billingDayText);
+      const data = editValidation.submit();
+
+      if (!data) {
+        return;
+      }
+
       props.onSubmit({
-        name: trimmedName,
-        cnpj: form.cnpj,
-        planId: form.planId,
-        phone: form.phone,
-        address: form.address,
-        website: form.website,
-        segment: form.segment,
-        contactName: form.contactName,
-        billingDay,
+        name: data.name,
+        cnpj: data.cnpj === '' ? undefined : data.cnpj,
+        planId: data.planId,
+        phone: data.phone,
+        address: data.address,
+        website: data.website,
+        segment: data.segment,
+        contactName: data.contactName,
+        billingDay: data.billingDayText === '' ? null : Number(data.billingDayText),
       });
       return;
     }
 
-    const billingDay = billingDayText.trim() === '' ? undefined : Number(billingDayText);
-    props.onSubmit({ ...form, name: trimmedName, email: form.email.trim(), billingDay });
+    const data = createValidation.submit();
+
+    if (!data) {
+      return;
+    }
+
+    props.onSubmit({
+      name: data.name,
+      email: data.email,
+      cnpj: data.cnpj,
+      planId: data.planId,
+      phone: data.phone,
+      address: data.address,
+      website: data.website,
+      segment: data.segment,
+      contactName: data.contactName,
+      billingDay: data.billingDayText === '' ? undefined : Number(data.billingDayText),
+    });
   }
 
   const isDirty = !isSameValue({ form, billingDayText }, baseline);
@@ -144,21 +163,16 @@ export function CompanyFormDialog(props: CompanyFormDialogProps) {
         size="lg"
         className="max-h-[90vh]"
         footer={
-          <ModalActions
-            formId={formId}
-            submitLabel={isEditing ? 'Salvar' : 'Salvar empresa'}
-            onCancel={requestClose}
-            isSubmitting={isSubmitting}
-            disabled={!isFormValid}
-          />
+          <ModalActions formId={formId} submitLabel={isEditing ? 'Salvar' : 'Salvar empresa'} onCancel={requestClose} isSubmitting={isSubmitting} />
         }
       >
         <h2 className="text-2xl font-semibold text-accent mb-6 text-center">{isEditing ? 'Editar empresa' : 'Adicionar empresa'}</h2>
 
-        <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form id={formId} onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
           <Input
             label="Nome da empresa"
             icon={Building2}
+            {...validation.field('name')}
             value={form.name}
             onChange={(event) => updateField('name', event.target.value)}
             required
@@ -170,6 +184,7 @@ export function CompanyFormDialog(props: CompanyFormDialogProps) {
               label="E-mail"
               icon={Mail}
               type="email"
+              {...createValidation.field('email')}
               value={form.email}
               onChange={(event) => updateField('email', event.target.value)}
               required
@@ -177,7 +192,13 @@ export function CompanyFormDialog(props: CompanyFormDialogProps) {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <CnpjInput label="CNPJ" value={form.cnpj} onValueChange={(value) => updateField('cnpj', value)} required={!isEditing} />
+            <CnpjInput
+              label="CNPJ"
+              value={form.cnpj}
+              onValueChange={(value) => updateField('cnpj', value)}
+              required={!isEditing}
+              {...validation.field('cnpj')}
+            />
 
             <Select
               options={planOptions}
@@ -186,6 +207,7 @@ export function CompanyFormDialog(props: CompanyFormDialogProps) {
               onChange={(event) => updateField('planId', event.target.value)}
               disabled={plansQuery.isLoading || (!isEditing && planOptions.length === 0)}
               required={!isEditing}
+              {...validation.field('planId')}
             />
           </div>
 
@@ -219,6 +241,7 @@ export function CompanyFormDialog(props: CompanyFormDialogProps) {
             type="number"
             min={1}
             max={31}
+            {...validation.field('billingDayText')}
             value={billingDayText}
             onChange={(event) => setBillingDayText(event.target.value)}
           />

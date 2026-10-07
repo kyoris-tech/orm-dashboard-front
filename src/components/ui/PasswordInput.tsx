@@ -1,15 +1,14 @@
 import { forwardRef, memo } from 'react';
 import { SquareAsterisk } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { FieldError } from './FieldError';
 
 export interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
+  error?: string;
 }
 
-function PasswordInputComponent(
-  { label, className, ...props }: PasswordInputProps,
-  ref: React.Ref<HTMLInputElement>,
-) {
+function PasswordInputComponent({ label, error, className, ...props }: PasswordInputProps, ref: React.Ref<HTMLInputElement>) {
   return (
     <div className="w-full">
       <div className="relative">
@@ -21,12 +20,15 @@ function PasswordInputComponent(
           placeholder={label}
           inputMode="text"
           autoComplete="current-password"
+          aria-invalid={error ? true : undefined}
           className={cn(
             'w-full h-[50px] pl-9 pr-4 py-2 text-base leading-5 rounded-full border border-border text-muted placeholder:text-muted appearance-none bg-surface',
+            error && 'border-danger',
             className,
           )}
         />
       </div>
+      <FieldError message={error} />
     </div>
   );
 }

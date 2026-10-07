@@ -13,7 +13,7 @@ export function HomeView() {
   const [activeSection, setActiveSection] = useHomeSection();
 
   return (
-    <PageContainer className="pt-6">
+    <PageContainer className="pt-2">
       {activeSection === 'import' && (
         <section className="w-full max-w-3xl">
           <UploadArea />

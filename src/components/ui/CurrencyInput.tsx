@@ -1,6 +1,7 @@
 import { forwardRef, memo, useCallback } from 'react';
 import { Wallet, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { FieldError } from './FieldError';
 import { centsToReais, formatCurrency } from '@/lib/utils/currency';
 
 export interface CurrencyInputProps {
@@ -11,10 +12,12 @@ export interface CurrencyInputProps {
   className?: string;
   required?: boolean;
   autoFocus?: boolean;
+  error?: string;
+  onBlur?: () => void;
 }
 
 function CurrencyInputComponent(
-  { label, icon: Icon = Wallet, value, onValueChange, className, required, autoFocus }: CurrencyInputProps,
+  { label, icon: Icon = Wallet, value, onValueChange, className, required, autoFocus, error, onBlur }: CurrencyInputProps,
   ref: React.Ref<HTMLInputElement>,
 ) {
   const displayValue = value === undefined ? '' : formatCurrency(value);
@@ -46,12 +49,16 @@ function CurrencyInputComponent(
           onChange={handleChange}
           required={required}
           autoFocus={autoFocus}
+          onBlur={onBlur}
+          aria-invalid={error ? true : undefined}
           className={cn(
             'w-full h-[50px] pl-9 pr-4 py-2 rounded-full border border-border text-muted placeholder:text-muted',
+            error && 'border-danger',
             className,
           )}
         />
       </div>
+      <FieldError message={error} />
     </div>
   );
 }

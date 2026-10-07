@@ -169,7 +169,7 @@ código.
 Esta é a regra que mais gera trabalho e mais economiza depois.
 
 **Antes de escrever qualquer JSX, procure se já existe.** `src/components/ui/`
-tem 29 componentes. Um `<button>` cru dentro de uma feature quase sempre é um
+tem 32 componentes. Um `<button>` cru dentro de uma feature quase sempre é um
 `Button`, `SecondaryButton` ou `IconButton` que não foi procurado.
 
 **Se você duplicar um bloco pela segunda vez, extraia na hora.** Não espere a
@@ -523,7 +523,10 @@ Antes de criar qualquer coisa, veja se está aqui.
 | `Select` | select estilizado, recebe `SelectOption[]` |
 | `Checkbox`, `Radio` | inputs de escolha |
 | `SegmentedControl` | alternador de abas, genérico em `<T extends string>` |
-| `Modal` | **base de todo dialog** — portal, overlay, animação, `size` |
+| `Modal` | **base de todo dialog** — portal, overlay, animação, `size`; com `onClose` ganha X, clique fora e Esc; `footer` fixa os botões |
+| `ModalActions` | par Cancelar/Salvar do rodapé de um formulário; liga o submit ao `<form>` por `formId` |
+| `DiscardChangesDialog` | confirmação "Descartar alterações?"; use via `useDiscardGuard`, não direto |
+| `FieldError` | mensagem de erro de campo; `Input`, `PasswordInput`, `Select`, `CnpjInput` e `CurrencyInput` já a exibem pela prop `error` |
 | `ConfirmDialog` | confirmação sim/não com `tone` |
 | `Drawer` | painel lateral de detalhes |
 | `ModalPortal` | portal cru; use `Modal`, não este |
@@ -754,6 +757,49 @@ Nunca reimplemente o `isAxiosError` — a divergência entre cópias já acontec
 `useUndoableDelete` (em `features/resumes/hooks/`) é o padrão de exclusão com
 janela de desfazer: exclui, guarda o id por 6s, oferece `Toast` com ação de
 restaurar. Reaproveite se precisar do mesmo comportamento em outro recurso.
+
+### Formulários: Zod, aviso de descarte e rodapé fixo
+
+Todo formulário segue o mesmo desenho. Quem escreve um novo deve copiar o
+`CompanyFormDialog` (criar/editar) ou o `CreateUserDialog` (só criar).
+
+**1. Schema Zod por feature** — `features/<feature>/schemas.ts`, com as mensagens
+em português (é o que o usuário lê). Os blocos reutilizáveis ficam em
+`src/lib/validation/fields.ts` (`requiredText`, `emailField`, `requiredId`...).
+
+```ts
+export const changePasswordSchema = z.object({
+  password: z.string().refine((value) => value.trim().length >= 6, 'A senha deve ter pelo menos 6 caracteres.'),
+});
+```
+
+O schema valida o **estado bruto do formulário** (textos, como `billingDayText`),
+e o `submit()` devolve o dado já limpo (`trim`) — monte o payload a partir dele,
+não do estado. Conversões (texto → número, vazio → `null`) ficam no handler.
+
+**2. `useFormValidation(schema, values)`** (`src/lib/validation/`):
+
+- `validation.field('name')` devolve `{ error, onBlur }` — espalhe no campo:
+  `<Input {...validation.field('name')} />`. O erro só aparece depois que o
+  usuário sai do campo ou tenta enviar.
+- `validation.submit()` marca o envio e devolve o dado validado ou `null`.
+- `validation.reset()` — chame no bloco que reseta o formulário ao abrir.
+- O formulário usa `noValidate`: a mensagem é a do Zod, não a do navegador. O botão
+  de salvar **não** fica desabilitado; clicar nele mostra o que falta.
+
+**3. Aviso de descarte** — `useDiscardGuard(isDirty, onCancel)` devolve
+`{ requestClose, discardDialog }`. Passe `requestClose` ao `onClose` do `Modal` e
+ao Cancelar (X, clique fora, Esc e Cancelar caem todos nele) e renderize
+`{discardDialog}` ao lado do `Modal`. `isDirty` compara com o valor **de quando o
+modal abriu** (guarde um `baseline` no mesmo bloco que reseta o formulário), nunca
+com a prop viva, senão um refetch gera aviso falso.
+
+**4. Rodapé fixo** — passe `footer={<ModalActions formId={formId} ... />}` ao
+`Modal` e `id={formId}` ao `<form>` (`useId()`); os botões ficam fora da área que
+rola e continuam enviando o formulário.
+
+O Esc fecha só o modal do topo (`useEscapeToClose` mantém uma pilha), então um
+aviso de descarte aberto sobre um formulário fecha primeiro.
 
 ---
 
