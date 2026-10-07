@@ -1,10 +1,11 @@
 'use client';
 
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { CONTRACT_TYPE_LABELS, JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES, WORK_MODEL_LABELS } from '@/features/job-openings/labels';
 import { usePublicJobOpeningQuery } from '../hooks/use-public-job-opening-query';
 import { PublicApplyArea } from './PublicApplyArea';
+import { Spinner } from '@/components/ui/Spinner';
 
 const APPLICATION_TIPS = [
   'Mantenha seu currículo atualizado.',
@@ -25,9 +26,7 @@ export function PublicJobOpeningView({ code }: PublicJobOpeningViewProps) {
 
   if (jobOpeningQuery.isLoading) {
     return (
-      <div className="flex justify-center items-center h-[50vh] w-full">
-        <Loader2 className="animate-spin text-accent" size={32} />
-      </div>
+      <Spinner size={32} className="h-[50vh] w-full" />
     );
   }
 
@@ -68,8 +67,8 @@ export function PublicJobOpeningView({ code }: PublicJobOpeningViewProps) {
             <div>
               <p className="text-muted mb-1">Requisitos principais</p>
               <ul className="list-disc list-inside space-y-1 text-foreground">
-                {jobOpening.requirements.map((requirement) => (
-                  <li key={requirement}>{requirement}</li>
+                {jobOpening.requirements.map((requirement, index) => (
+                  <li key={`${requirement}-${index}`}>{requirement}</li>
                 ))}
               </ul>
             </div>
@@ -79,8 +78,8 @@ export function PublicJobOpeningView({ code }: PublicJobOpeningViewProps) {
             <div>
               <p className="text-muted mb-1">Diferenciais</p>
               <ul className="list-disc list-inside space-y-1 text-foreground">
-                {jobOpening.differentials.map((differential) => (
-                  <li key={differential}>{differential}</li>
+                {jobOpening.differentials.map((differential, index) => (
+                  <li key={`${differential}-${index}`}>{differential}</li>
                 ))}
               </ul>
             </div>
@@ -90,8 +89,8 @@ export function PublicJobOpeningView({ code }: PublicJobOpeningViewProps) {
             <div>
               <p className="text-muted mb-1">Benefícios</p>
               <ul className="list-disc list-inside space-y-1 text-foreground">
-                {jobOpening.benefits.map((benefit) => (
-                  <li key={benefit}>{benefit}</li>
+                {jobOpening.benefits.map((benefit, index) => (
+                  <li key={`${benefit}-${index}`}>{benefit}</li>
                 ))}
               </ul>
             </div>

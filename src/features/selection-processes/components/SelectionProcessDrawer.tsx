@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Briefcase, Loader2, Trophy, UserPlus, User, XCircle } from 'lucide-react';
+import { Briefcase, Trophy, UserPlus, User, XCircle } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
+import { QueryBoundary } from '@/components/ui/QueryBoundary';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils/date';
@@ -113,125 +114,119 @@ export function SelectionProcessDrawer({ processId, onClose }: SelectionProcessD
   return (
     <>
       <Drawer isOpen={Boolean(processId)} onClose={onClose} title={process?.name ?? 'Processo seletivo'}>
-        {selectionProcessQuery.isLoading && (
-          <div className="flex justify-center items-center h-40">
-            <Loader2 className="animate-spin text-accent" size={24} />
-          </div>
-        )}
-
-        {selectionProcessQuery.isError && <p className="text-danger text-sm">Não foi possível carregar os candidatos deste processo.</p>}
-
-        {process && (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <Badge tone={SELECTION_PROCESS_STATUS_TONES[process.status]}>{SELECTION_PROCESS_STATUS_LABELS[process.status]}</Badge>
-              <span className="text-xs text-muted">Criado em {formatDate(process.createdAt)}</span>
-            </div>
-
-            {process.status === 'CONCLUDED' && selectedResumeName && (
-              <div className="flex items-center gap-3 border border-accent/30 bg-accent/5 rounded-xl px-4 py-3">
-                <span className="bg-accent/10 text-accent rounded-full p-2 shrink-0">
-                  <Trophy size={16} />
-                </span>
-                <span className="flex flex-col">
-                  <span className="text-xs text-muted">Candidato escolhido</span>
-                  <span className="text-sm font-medium text-foreground">{selectedResumeName}</span>
-                  {process.concludedAt && <span className="text-xs text-muted">Concluído em {formatDate(process.concludedAt)}</span>}
-                </span>
+        <QueryBoundary query={selectionProcessQuery} errorMessage="Não foi possível carregar os candidatos deste processo.">
+          {(process) => (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <Badge tone={SELECTION_PROCESS_STATUS_TONES[process.status]}>{SELECTION_PROCESS_STATUS_LABELS[process.status]}</Badge>
+                <span className="text-xs text-muted">Criado em {formatDate(process.createdAt)}</span>
               </div>
-            )}
 
-            <button
-              onClick={() => setIsLinkJobOpen(true)}
-              className="flex items-center gap-2 text-sm border border-border rounded-xl px-4 py-3 hover:bg-surface-soft transition text-left"
-            >
-              <span className="bg-surface-soft text-accent rounded-full p-2 shrink-0">
-                <Briefcase size={16} />
-              </span>
-              <span className="flex flex-col">
-                <span className="text-foreground font-medium">{process.jobOpening ? process.jobOpening.title : 'Nenhuma vaga vinculada'}</span>
-                <span className="text-xs text-accent">{process.jobOpening ? 'Alterar vaga' : 'Vincular vaga'}</span>
-              </span>
-
-              {process.jobOpening && (
-                <Badge tone={JOB_OPENING_STATUS_TONES[process.jobOpening.status]} className="ml-auto">
-                  {JOB_OPENING_STATUS_LABELS[process.jobOpening.status]}
-                </Badge>
-              )}
-            </button>
-
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted">
-                {process.candidates.length} candidato{process.candidates.length === 1 ? '' : 's'} neste processo.
-              </p>
-
-              {isOpenStatus && (
-                <button
-                  onClick={() => setIsAddCandidatesOpen(true)}
-                  className="flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent-dark transition"
-                >
-                  <UserPlus size={14} />
-                  Adicionar candidato
-                </button>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {process.candidates.map((entry) => (
-                <button
-                  key={entry.id}
-                  onClick={() => setSelectedResume(entry.resume)}
-                  className="flex items-center gap-3 text-left border border-border rounded-xl px-4 py-3 hover:bg-surface-soft transition"
-                >
-                  <span className="bg-surface-soft text-accent rounded-full p-2">
-                    <User size={16} />
+              {process.status === 'CONCLUDED' && selectedResumeName && (
+                <div className="flex items-center gap-3 border border-accent/30 bg-accent/5 rounded-xl px-4 py-3">
+                  <span className="bg-accent/10 text-accent rounded-full p-2 shrink-0">
+                    <Trophy size={16} />
                   </span>
                   <span className="flex flex-col">
-                    <span className="text-sm font-medium text-foreground">{entry.resume.dataJson?.fullName ?? entry.resume.fullName}</span>
-                    <span className="text-xs text-muted">Adicionado em {formatDate(entry.addedAt)}</span>
+                    <span className="text-xs text-muted">Candidato escolhido</span>
+                    <span className="text-sm font-medium text-foreground">{selectedResumeName}</span>
+                    {process.concludedAt && <span className="text-xs text-muted">Concluído em {formatDate(process.concludedAt)}</span>}
                   </span>
-
-                  <span
-                    title="Percentual de adesão do currículo aos requisitos da vaga"
-                    className={`ml-auto px-3 py-1 rounded-full text-white text-xs font-semibold shrink-0 ${scoreTone(entry.matchScore ?? 0)}`}
-                  >
-                    {entry.matchScore ?? 0}% de adesão
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {isOpenStatus && (
-              <div className="flex flex-col gap-2 mt-2">
-                <button
-                  onClick={() => setIsConcludeOpen(true)}
-                  disabled={process.candidates.length === 0}
-                  className="flex items-center justify-center gap-2 text-sm text-accent border border-accent/30 rounded-full py-2 hover:bg-accent/5 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Trophy size={16} />
-                  Concluir processo
-                </button>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsCloseConfirmOpen(true)}
-                    className="flex-1 flex items-center justify-center gap-2 text-sm text-muted border border-border rounded-full py-2 hover:bg-surface-soft transition"
-                  >
-                    Fechar processo
-                  </button>
-
-                  <button
-                    onClick={() => setIsCancelConfirmOpen(true)}
-                    className="flex-1 flex items-center justify-center gap-2 text-sm text-danger border border-danger/30 rounded-full py-2 hover:bg-danger-soft transition"
-                  >
-                    <XCircle size={16} />
-                    Cancelar
-                  </button>
                 </div>
+              )}
+
+              <button
+                onClick={() => setIsLinkJobOpen(true)}
+                className="flex items-center gap-2 text-sm border border-border rounded-xl px-4 py-3 hover:bg-surface-soft transition text-left"
+              >
+                <span className="bg-surface-soft text-accent rounded-full p-2 shrink-0">
+                  <Briefcase size={16} />
+                </span>
+                <span className="flex flex-col">
+                  <span className="text-foreground font-medium">{process.jobOpening ? process.jobOpening.title : 'Nenhuma vaga vinculada'}</span>
+                  <span className="text-xs text-accent">{process.jobOpening ? 'Alterar vaga' : 'Vincular vaga'}</span>
+                </span>
+
+                {process.jobOpening && (
+                  <Badge tone={JOB_OPENING_STATUS_TONES[process.jobOpening.status]} className="ml-auto">
+                    {JOB_OPENING_STATUS_LABELS[process.jobOpening.status]}
+                  </Badge>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted">
+                  {process.candidates.length} candidato{process.candidates.length === 1 ? '' : 's'} neste processo.
+                </p>
+
+                {isOpenStatus && (
+                  <button
+                    onClick={() => setIsAddCandidatesOpen(true)}
+                    className="flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent-dark transition"
+                  >
+                    <UserPlus size={14} />
+                    Adicionar candidato
+                  </button>
+                )}
               </div>
-            )}
-          </div>
-        )}
+
+              <div className="flex flex-col gap-3">
+                {process.candidates.map((entry) => (
+                  <button
+                    key={entry.id}
+                    onClick={() => setSelectedResume(entry.resume)}
+                    className="flex items-center gap-3 text-left border border-border rounded-xl px-4 py-3 hover:bg-surface-soft transition"
+                  >
+                    <span className="bg-surface-soft text-accent rounded-full p-2">
+                      <User size={16} />
+                    </span>
+                    <span className="flex flex-col">
+                      <span className="text-sm font-medium text-foreground">{entry.resume.dataJson?.fullName ?? entry.resume.fullName}</span>
+                      <span className="text-xs text-muted">Adicionado em {formatDate(entry.addedAt)}</span>
+                    </span>
+
+                    <span
+                      title="Percentual de adesão do currículo aos requisitos da vaga"
+                      className={`ml-auto px-3 py-1 rounded-full text-white text-xs font-semibold shrink-0 ${scoreTone(entry.matchScore ?? 0)}`}
+                    >
+                      {entry.matchScore ?? 0}% de adesão
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {isOpenStatus && (
+                <div className="flex flex-col gap-2 mt-2">
+                  <button
+                    onClick={() => setIsConcludeOpen(true)}
+                    disabled={process.candidates.length === 0}
+                    className="flex items-center justify-center gap-2 text-sm text-accent border border-accent/30 rounded-full py-2 hover:bg-accent/5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Trophy size={16} />
+                    Concluir processo
+                  </button>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setIsCloseConfirmOpen(true)}
+                      className="flex-1 flex items-center justify-center gap-2 text-sm text-muted border border-border rounded-full py-2 hover:bg-surface-soft transition"
+                    >
+                      Fechar processo
+                    </button>
+
+                    <button
+                      onClick={() => setIsCancelConfirmOpen(true)}
+                      className="flex-1 flex items-center justify-center gap-2 text-sm text-danger border border-danger/30 rounded-full py-2 hover:bg-danger-soft transition"
+                    >
+                      <XCircle size={16} />
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </QueryBoundary>
       </Drawer>
 
       <ConfirmDialog

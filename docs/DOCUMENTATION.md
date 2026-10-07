@@ -112,7 +112,7 @@ Nesta ordem são ~15 minutos, e dão o modelo mental inteiro:
 1. `src/app/layout.tsx` — shell da aplicação (fonte, Header, Footer, providers)
 2. `src/proxy.ts` — quem entra e quem é redirecionado para `/login`
 3. `src/app/(protected)/home/home-view.tsx` — a tela principal do produto
-4. `src/app/api/admin/users/route.ts` — um Route Handler BFF típico, curto
+4. `src/lib/http/proxy-handler.ts` e `src/app/api/admin/users/route.ts` — o BFF inteiro cabe nessas duas leituras
 5. `src/features/admin/users/` — uma feature inteira, pequena o bastante para ler de ponta a ponta
 
 ---
@@ -169,7 +169,7 @@ código.
 Esta é a regra que mais gera trabalho e mais economiza depois.
 
 **Antes de escrever qualquer JSX, procure se já existe.** `src/components/ui/`
-tem 25 componentes. Um `<button>` cru dentro de uma feature quase sempre é um
+tem 29 componentes. Um `<button>` cru dentro de uma feature quase sempre é um
 `Button`, `SecondaryButton` ou `IconButton` que não foi procurado.
 
 **Se você duplicar um bloco pela segunda vez, extraia na hora.** Não espere a
@@ -358,38 +358,47 @@ para `/login`.
 
 ### Formato de um Route Handler
 
-Todos seguem esta forma. Ao criar um novo, copie de
+Quase todo Route Handler é só uma declaração. `src/lib/http/proxy-handler.ts`
+concentra o que antes se repetia em cada arquivo (checar sessão, repassar
+query/body, encaminhar o erro do Nest). Ao criar um novo, copie de
 `src/app/api/admin/users/route.ts`:
 
 ```ts
-export async function GET(request: Request) {
-  const token = await requireSessionToken();
+import { proxyHandler } from '@/lib/http/proxy-handler';
 
-  if (token instanceof NextResponse) {
-    return token;
-  }
+export const GET = proxyHandler({
+  method: 'get',
+  path: '/users',
+  errorMessage: 'Não foi possível carregar os usuários.',
+  query: true,
+});
 
-  const { searchParams } = new URL(request.url);
-
-  try {
-    const { data } = await backendClient.get('/users', {
-      ...withBearerToken(token),
-      params: Object.fromEntries(searchParams),
-    });
-    return NextResponse.json(data);
-  } catch (error) {
-    return forwardAxiosError(error, 'Não foi possível carregar os usuários.');
-  }
-}
+export const PATCH = proxyHandler({
+  method: 'patch',
+  path: ({ id }) => `/users/${id}/status`,
+  errorMessage: 'Não foi possível atualizar o status do usuário.',
+  body: true,
+});
 ```
 
-Três peças obrigatórias:
+Opções de `proxyHandler`:
 
-- `requireSessionToken()` — devolve o token **ou** um `NextResponse` 401. O
-  `instanceof` não é opcional.
-- `Object.fromEntries(searchParams)` — sem isso a paginação e os filtros são
-  silenciosamente descartados (seção 15).
-- `forwardAxiosError(error, ...)` — preserva o status e a mensagem do Nest.
+- `path` — string, ou função dos parâmetros da rota (`[id]`, `[code]`...).
+- `query: true` — repassa a query string. **Sem isso a paginação e os filtros
+  são silenciosamente descartados** (seção 15); toda listagem precisa dele.
+- `body: true` — repassa o JSON do corpo.
+- `public: true` — dispensa sessão (só para o que fica sob `public/`).
+- `respond` — transforma o dado antes de responder (o `DELETE` de plano devolve
+  `{ id }`).
+
+A sessão é validada sempre (401 com `Sessão expirada`) e o erro do backend volta
+com o mesmo status e a mesma mensagem; `errorMessage` é só o fallback.
+
+Quando a rota precisa de lógica própria, use `authenticatedRoute(errorMessage,
+({ token, request, params }) => ...)` do mesmo arquivo: ele faz a sessão e o
+`try/catch`, e você devolve um `NextResponse` (exemplo:
+`src/lib/resumes/company-resumes-route.ts`). Só ficam fora do padrão as rotas de
+autenticação, o upload multipart e o PDF, que manipulam a resposta bruta.
 
 ### Cache
 
@@ -522,6 +531,10 @@ Antes de criar qualquer coisa, veja se está aqui.
 | `Pagination` | navegação de páginas + seletor de itens por página |
 | `Card`, `StatCard` | contêineres |
 | `Badge` | pílula de status, com `tone` |
+| `BadgeGroup` | rótulo + lista de `Badge` (requisitos, benefícios); some se a lista é vazia |
+| `DetailField` | par rótulo/valor dos drawers e páginas de detalhe |
+| `Spinner` | indicador de carregamento centralizado; o tamanho da área vem de `className` |
+| `QueryBoundary` | carregando/erro/dados de uma `useQuery`; os filhos recebem o dado já garantido |
 | `Text` | tipografia |
 | `Toast` | aviso temporário, com ação opcional (usado no "desfazer") |
 | `OrmLogo` | logo |
@@ -598,8 +611,8 @@ registros. Esses lugares pedem explicitamente:
 const companiesQuery = useCompaniesQuery({ pageSize: ALL_ITEMS_PAGE_SIZE });
 ```
 
-Hoje usam isso: `JobOpeningPicker`, `CreateUserDialog`, `CreateCompanyDialog`,
-`EditCompanyDialog`, `UsersView`, `AdminMetricsView` e
+Hoje usam isso: `JobOpeningPicker`, `CreateUserDialog`, `CompanyFormDialog`,
+`UsersView`, `AdminMetricsView` e
 `use-recruitment-metrics-query`. **Se você criar um novo select alimentado por
 uma lista paginada, ele precisa disto** — senão trunca em silêncio.
 
@@ -777,7 +790,7 @@ Vagas) são estado local em `home-view.tsx`.
 | `public/` | `job-openings`, `job-openings/[code]`, `job-openings/[code]/apply` — **sem sessão** |
 | `admin/` | `companies` (+ `[id]`, `[id]/plan`, `[id]/status`, `[id]/regenerate-token`), `users` (+ `[id]/status`, `[id]/password`, `export`), `plans` (+ `[id]`), `audit-logs` |
 
-Os handlers sob `public/` são os únicos que não chamam `requireSessionToken()`.
+Os handlers sob `public/` são os únicos que usam `public: true` e dispensam a sessão.
 
 ---
 
@@ -833,8 +846,8 @@ Notas úteis:
 
 ### 14.3 Novo endpoint
 
-1. `src/app/api/<recurso>/route.ts`, copiando o formato da seção 6 — inclusive o
-   repasse de `searchParams`.
+1. `src/app/api/<recurso>/route.ts` com `proxyHandler` (seção 6). Em listagens,
+   `query: true` é obrigatório.
 2. Função em `features/<feature>/api.ts` usando `httpClient`.
 3. Tipos de request/response em `src/types/`.
 4. Chave em `src/lib/query/keys.ts`.

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { createColumnHelper, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { Loader2 } from 'lucide-react';
 import { DataTable } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
 import { Badge } from '@/components/ui/Badge';
@@ -12,6 +11,7 @@ import { SelectionProcessDrawer } from './SelectionProcessDrawer';
 import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '../labels';
 import type { SelectionProcessSummary } from '@/types/selection-process';
 import { usePagination } from '@/lib/hooks/use-pagination';
+import { Spinner } from '@/components/ui/Spinner';
 
 const columnHelper = createColumnHelper<SelectionProcessSummary>();
 
@@ -53,9 +53,7 @@ export function SelectionProcessesTable() {
 
   if (selectionProcessesQuery.isLoading) {
     return (
-      <div className="flex justify-center items-center h-[20rem]">
-        <Loader2 className="animate-spin text-accent" size={28} />
-      </div>
+      <Spinner size={28} className="h-[20rem]" />
     );
   }
 

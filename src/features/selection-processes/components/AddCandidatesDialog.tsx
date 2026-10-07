@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Button } from '@/components/ui/Button';
 import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import { useCompanyResumesQuery } from '@/features/resumes/hooks/use-company-resumes-query';
+import { Spinner } from '@/components/ui/Spinner';
+import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
 
 export interface AddCandidatesDialogProps {
   isOpen: boolean;
@@ -62,53 +63,52 @@ export function AddCandidatesDialog({ isOpen, existingResumeIds, isSubmitting, o
     onSubmit(selectedIds);
   }
 
+  const isDirty = selectedIds.length > 0;
+  const { requestClose, discardDialog } = useDiscardGuard(isDirty, onCancel);
+
   return (
-    <Modal isOpen={isOpen} className="flex flex-col max-h-[85vh]">
-      <h2 className="text-2xl font-semibold text-accent mb-4 text-center">Adicionar candidatos</h2>
+    <>
+      <Modal isOpen={isOpen} onClose={requestClose} className="flex flex-col max-h-[85vh]">
+        <h2 className="text-2xl font-semibold text-accent mb-4 text-center">Adicionar candidatos</h2>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 min-h-0">
-        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome" />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 min-h-0">
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome" />
 
-        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 border border-border rounded-xl p-2">
-          {companyResumesQuery.isLoading && (
-            <div className="flex justify-center items-center h-32">
-              <Loader2 className="animate-spin text-accent" size={22} />
-            </div>
-          )}
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 border border-border rounded-xl p-2">
+            {companyResumesQuery.isLoading && <Spinner size={22} className="h-32" />}
 
-          {companyResumesQuery.isError && <p className="text-danger text-sm text-center py-6">Não foi possível carregar os currículos.</p>}
+            {companyResumesQuery.isError && <p className="text-danger text-sm text-center py-6">Não foi possível carregar os currículos.</p>}
 
-          {!companyResumesQuery.isLoading && !companyResumesQuery.isError && availableResumes.length === 0 && (
-            <p className="text-muted text-sm text-center py-6">
-              {existingResumeIds.length > 0 ? 'Todos os currículos já estão neste processo.' : 'Nenhum currículo encontrado.'}
-            </p>
-          )}
+            {!companyResumesQuery.isLoading && !companyResumesQuery.isError && availableResumes.length === 0 && (
+              <p className="text-muted text-sm text-center py-6">
+                {existingResumeIds.length > 0 ? 'Todos os currículos já estão neste processo.' : 'Nenhum currículo encontrado.'}
+              </p>
+            )}
 
-          {availableResumes.map((resume) => {
-            const name = resume.dataJson?.fullName ?? resume.fullName;
+            {availableResumes.map((resume) => {
+              const name = resume.dataJson?.fullName ?? resume.fullName;
 
-            return (
-              <label
-                key={resume.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-soft transition cursor-pointer"
-              >
-                <Checkbox checked={selectedIds.includes(resume.id)} onChange={() => toggleResume(resume.id)} />
-                <span className="text-sm text-foreground">{name}</span>
-              </label>
-            );
-          })}
-        </div>
+              return (
+                <label key={resume.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-soft transition cursor-pointer">
+                  <Checkbox checked={selectedIds.includes(resume.id)} onChange={() => toggleResume(resume.id)} />
+                  <span className="text-sm text-foreground">{name}</span>
+                </label>
+              );
+            })}
+          </div>
 
-        <div className="flex gap-4">
-          <SecondaryButton onClick={onCancel} className="flex-1">
-            Cancelar
-          </SecondaryButton>
+          <div className="flex gap-4">
+            <SecondaryButton onClick={requestClose} className="flex-1">
+              Cancelar
+            </SecondaryButton>
 
-          <Button type="submit" variant="accent" loading={isSubmitting} disabled={selectedIds.length === 0} className="flex-1 !w-auto">
-            Adicionar{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+            <Button type="submit" variant="accent" loading={isSubmitting} disabled={selectedIds.length === 0} className="flex-1 !w-auto">
+              Adicionar{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+      {discardDialog}
+    </>
   );
 }

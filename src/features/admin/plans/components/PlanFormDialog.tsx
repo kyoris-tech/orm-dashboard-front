@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { Award } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { Button } from '@/components/ui/Button';
-import { SecondaryButton } from '@/components/ui/SecondaryButton';
+import { ModalActions } from '@/components/ui/ModalActions';
 import { FEATURE_OPTIONS } from '../../../plan/labels';
 import type { CreatePlanInput, Plan, PlanFeature } from '@/types/company';
+import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
+import { isSameValue } from '@/lib/utils/form';
 
 export interface PlanFormDialogProps {
   isOpen: boolean;
@@ -41,18 +42,20 @@ function toLimitValue(value: string): number | null {
 }
 
 export function PlanFormDialog({ isOpen, plan, isSubmitting, onSubmit, onCancel }: PlanFormDialogProps) {
+  const formId = useId();
   const [form, setForm] = useState<CreatePlanInput>(EMPTY_FORM);
+  const [baseline, setBaseline] = useState<CreatePlanInput>(EMPTY_FORM);
   const [wasOpen, setWasOpen] = useState(isOpen);
 
   if (isOpen !== wasOpen) {
     setWasOpen(isOpen);
 
     if (isOpen) {
-      setForm(
-        plan
-          ? { name: plan.name, maxUsers: plan.maxUsers, maxResumesPerMonth: plan.maxResumesPerMonth, features: plan.features }
-          : EMPTY_FORM,
-      );
+      const initial = plan
+        ? { name: plan.name, maxUsers: plan.maxUsers, maxResumesPerMonth: plan.maxResumesPerMonth, features: plan.features }
+        : EMPTY_FORM;
+      setForm(initial);
+      setBaseline(initial);
     }
   }
 
@@ -73,60 +76,69 @@ export function PlanFormDialog({ isOpen, plan, isSubmitting, onSubmit, onCancel 
     onSubmit({ ...form, name: form.name.trim() });
   }
 
+  const isDirty = !isSameValue(form, baseline);
+  const { requestClose, discardDialog } = useDiscardGuard(isDirty, onCancel);
+
   return (
-    <Modal isOpen={isOpen} className="max-h-[90vh] overflow-y-auto">
-      <h2 className="text-2xl font-semibold text-accent mb-6 text-center">{plan ? 'Editar plano' : 'Adicionar plano'}</h2>
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={requestClose}
+        className="max-h-[90vh]"
+        footer={
+          <ModalActions
+            formId={formId}
+            submitLabel={'Salvar plano'}
+            onCancel={requestClose}
+            isSubmitting={isSubmitting}
+            disabled={form.name.trim() === ''}
+          />
+        }
+      >
+        <h2 className="text-2xl font-semibold text-accent mb-6 text-center">{plan ? 'Editar plano' : 'Adicionar plano'}</h2>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <Input
-          label="Nome do plano"
-          icon={Award}
-          value={form.name}
-          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-          required
-          autoFocus
-        />
-
-        <div className="grid grid-cols-2 gap-4">
+        <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-5">
           <Input
-            label="Máx. usuários (vazio = ilimitado)"
-            type="number"
-            min={1}
-            value={toFormValue(form.maxUsers)}
-            onChange={(event) => setForm((current) => ({ ...current, maxUsers: toLimitValue(event.target.value) }))}
+            label="Nome do plano"
+            icon={Award}
+            value={form.name}
+            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+            required
+            autoFocus
           />
 
-          <Input
-            label="Currículos/mês (vazio = ilimitado)"
-            type="number"
-            min={1}
-            value={toFormValue(form.maxResumesPerMonth)}
-            onChange={(event) => setForm((current) => ({ ...current, maxResumesPerMonth: toLimitValue(event.target.value) }))}
-          />
-        </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Máx. usuários (vazio = ilimitado)"
+              type="number"
+              min={1}
+              value={toFormValue(form.maxUsers)}
+              onChange={(event) => setForm((current) => ({ ...current, maxUsers: toLimitValue(event.target.value) }))}
+            />
 
-        <div>
-          <p className="text-sm text-muted mb-3">Funcionalidades incluídas</p>
-          <div className="flex flex-col gap-3">
-            {FEATURE_OPTIONS.map((option) => (
-              <label key={option.value} className="flex items-center gap-3 cursor-pointer">
-                <Checkbox checked={form.features.includes(option.value)} onChange={() => toggleFeature(option.value)} />
-                <span className="text-sm text-foreground">{option.label}</span>
-              </label>
-            ))}
+            <Input
+              label="Currículos/mês (vazio = ilimitado)"
+              type="number"
+              min={1}
+              value={toFormValue(form.maxResumesPerMonth)}
+              onChange={(event) => setForm((current) => ({ ...current, maxResumesPerMonth: toLimitValue(event.target.value) }))}
+            />
           </div>
-        </div>
 
-        <div className="flex gap-4 mt-2">
-          <SecondaryButton onClick={onCancel} className="flex-1">
-            Cancelar
-          </SecondaryButton>
-
-          <Button type="submit" variant="accent" loading={isSubmitting} disabled={form.name.trim() === ''} className="flex-1">
-            Salvar plano
-          </Button>
-        </div>
-      </form>
-    </Modal>
+          <div>
+            <p className="text-sm text-muted mb-3">Funcionalidades incluídas</p>
+            <div className="flex flex-col gap-3">
+              {FEATURE_OPTIONS.map((option) => (
+                <label key={option.value} className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox checked={form.features.includes(option.value)} onChange={() => toggleFeature(option.value)} />
+                  <span className="text-sm text-foreground">{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </form>
+      </Modal>
+      {discardDialog}
+    </>
   );
 }

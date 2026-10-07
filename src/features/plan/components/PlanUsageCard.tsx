@@ -1,8 +1,8 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { useMyPlanQuery } from '../hooks/use-my-plan-query';
+import { Spinner } from '@/components/ui/Spinner';
 
 function UsageBar({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   const percentage = limit === null ? 0 : Math.min(100, Math.round((used / limit) * 100));
@@ -35,9 +35,7 @@ export function PlanUsageCard() {
 
   if (planQuery.isLoading) {
     return (
-      <div className="w-full bg-surface border border-border rounded-2xl p-5 flex items-center justify-center h-[88px]">
-        <Loader2 className="animate-spin text-accent" size={18} />
-      </div>
+      <Spinner size={18} className="w-full bg-surface border border-border rounded-2xl p-5 h-[88px]" />
     );
   }
 

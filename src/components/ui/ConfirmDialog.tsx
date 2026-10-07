@@ -1,7 +1,6 @@
 'use client';
 
 import { memo } from 'react';
-import { X } from 'lucide-react';
 import { Modal } from './Modal';
 import { SecondaryButton } from './SecondaryButton';
 import { cn } from '@/lib/utils/cn';
@@ -30,11 +29,7 @@ function ConfirmDialogComponent({
   const isDanger = tone === 'danger';
 
   return (
-    <Modal isOpen={isOpen} className="text-center relative">
-      <button onClick={onCancel} title="Fechar" aria-label="Fechar" className="absolute top-4 right-4 text-muted hover:text-accent transition">
-        <X size={20} />
-      </button>
-
+    <Modal isOpen={isOpen} className="text-center" onClose={onCancel}>
       <h2 className={cn('text-2xl font-semibold mb-4', isDanger ? 'text-danger' : 'text-accent')}>{title}</h2>
 
       <p className="text-foreground text-sm mb-8 leading-relaxed">{message}</p>

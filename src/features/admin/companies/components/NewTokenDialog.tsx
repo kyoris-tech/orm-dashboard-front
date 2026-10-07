@@ -33,7 +33,7 @@ export function NewTokenDialog({ token, onClose }: NewTokenDialogProps) {
   }
 
   return (
-    <Modal isOpen={isOpen} className="text-center">
+    <Modal isOpen={isOpen} className="text-center" onClose={onClose}>
       <span className="inline-flex bg-surface-soft text-accent rounded-full p-3 mb-4">
         <KeyRound size={22} />
       </span>

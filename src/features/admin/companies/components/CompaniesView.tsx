@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
 import { CompaniesTable } from './CompaniesTable';
-import { CreateCompanyDialog } from './CreateCompanyDialog';
+import { CompanyFormDialog } from './CompanyFormDialog';
 import { useCreateCompanyMutation } from '../hooks/use-create-company-mutation';
 import type { CreateCompanyInput } from '@/types/company';
 import { extractErrorMessage } from '@/lib/utils/error';
@@ -33,7 +33,8 @@ export function CompaniesView() {
 
       <CompaniesTable />
 
-      <CreateCompanyDialog
+      <CompanyFormDialog
+        mode="create"
         isOpen={isCreateOpen}
         isSubmitting={createCompanyMutation.isPending}
         onSubmit={handleCreate}

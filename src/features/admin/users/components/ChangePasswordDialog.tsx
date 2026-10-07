@@ -6,6 +6,7 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import { SecondaryButton } from '@/components/ui/SecondaryButton';
 import type { UserSummary } from '@/types/user';
+import { useDiscardGuard } from '@/lib/hooks/use-discard-guard';
 
 export interface ChangePasswordDialogProps {
   isOpen: boolean;
@@ -39,34 +40,40 @@ export function ChangePasswordDialog({ isOpen, user, isSubmitting, onSubmit, onC
     onSubmit(password);
   }
 
+  const isDirty = password !== '';
+  const { requestClose, discardDialog } = useDiscardGuard(isDirty, onCancel);
+
   return (
-    <Modal isOpen={isOpen}>
-      <h2 className="text-2xl font-semibold text-accent mb-2 text-center">Alterar senha</h2>
-      <p className="text-sm text-muted text-center mb-6">
-        Defina uma nova senha para <span className="font-medium text-foreground">{user?.name}</span>.
-      </p>
+    <>
+      <Modal isOpen={isOpen} onClose={requestClose}>
+        <h2 className="text-2xl font-semibold text-accent mb-2 text-center">Alterar senha</h2>
+        <p className="text-sm text-muted text-center mb-6">
+          Defina uma nova senha para <span className="font-medium text-foreground">{user?.name}</span>.
+        </p>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <PasswordInput
-          label="Nova senha (mínimo 6 caracteres)"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          minLength={6}
-          autoComplete="new-password"
-          autoFocus
-        />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <PasswordInput
+            label="Nova senha (mínimo 6 caracteres)"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            minLength={6}
+            autoComplete="new-password"
+            autoFocus
+          />
 
-        <div className="flex gap-4 mt-2">
-          <SecondaryButton onClick={onCancel} className="flex-1">
-            Cancelar
-          </SecondaryButton>
+          <div className="flex gap-4 mt-2">
+            <SecondaryButton onClick={requestClose} className="flex-1">
+              Cancelar
+            </SecondaryButton>
 
-          <Button type="submit" variant="accent" loading={isSubmitting} disabled={!isValid} className="flex-1">
-            Salvar senha
-          </Button>
-        </div>
-      </form>
-    </Modal>
+            <Button type="submit" variant="accent" loading={isSubmitting} disabled={!isValid} className="flex-1">
+              Salvar senha
+            </Button>
+          </div>
+        </form>
+      </Modal>
+      {discardDialog}
+    </>
   );
 }

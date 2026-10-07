@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { useSessionUser } from '@/context/SessionProvider';
@@ -12,6 +11,7 @@ import { downloadResumePdf } from '../api';
 import { ResumeCard } from './ResumeCard';
 import { ResumeModal } from './ResumeModal';
 import type { ResumeSummary } from '@/types/resumes';
+import { Spinner } from '@/components/ui/Spinner';
 
 export function RecentImports() {
   const sessionUser = useSessionUser();
@@ -55,9 +55,7 @@ export function RecentImports() {
   function renderContent() {
     if (recentResumesQuery.isLoading) {
       return (
-        <div className="flex justify-center items-center h-[10rem]">
-          <Loader2 className="animate-spin text-accent" size={28} />
-        </div>
+        <Spinner size={28} className="h-[10rem]" />
       );
     }
 
