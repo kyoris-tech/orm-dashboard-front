@@ -23,7 +23,7 @@ export function PlansView() {
   }
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-0">
       <div className="flex items-center justify-end">
         <Button type="button" variant="accent" onClick={() => setIsCreateOpen(true)} className="!w-auto !py-2 !px-4 text-sm flex items-center gap-2">
           <Plus size={16} />

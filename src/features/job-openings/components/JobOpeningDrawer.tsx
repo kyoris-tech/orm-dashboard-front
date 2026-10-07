@@ -1,26 +1,37 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Copy, Loader2, Pencil, Users, XCircle } from 'lucide-react';
+import { Check, Copy, Globe, Lock, Pencil, Users, XCircle } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Badge } from '@/components/ui/Badge';
+import { BadgeGroup } from '@/components/ui/BadgeGroup';
+import { DetailField } from '@/components/ui/DetailField';
+import { QueryBoundary } from '@/components/ui/QueryBoundary';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast } from '@/components/ui/Toast';
 import { formatDate } from '@/lib/utils/date';
 import { buildJobOpeningPublicUrl } from '@/lib/utils/job-opening-link';
-import { CONTRACT_TYPE_LABELS, JOB_OPENING_STATUS_LABELS, JOB_OPENING_STATUS_TONES, WORK_MODEL_LABELS } from '../labels';
+import {
+  CONTRACT_TYPE_LABELS,
+  JOB_OPENING_STATUS_LABELS,
+  JOB_OPENING_STATUS_TONES,
+  JOB_OPENING_VISIBILITY_LABELS,
+  JOB_OPENING_VISIBILITY_TONES,
+  WORK_MODEL_LABELS,
+} from '../labels';
 import { useJobOpeningQuery } from '../hooks/use-job-opening-query';
 import { useCancelJobOpeningMutation } from '../hooks/use-cancel-job-opening-mutation';
 import { useUpdateJobOpeningMutation } from '../hooks/use-update-job-opening-mutation';
 import { JobOpeningFormDialog } from './JobOpeningFormDialog';
 import { SelectionProcessDrawer } from '@/features/selection-processes/components/SelectionProcessDrawer';
 import { SELECTION_PROCESS_STATUS_LABELS, SELECTION_PROCESS_STATUS_TONES } from '@/features/selection-processes/labels';
-import type { CreateJobOpeningInput } from '@/types/job-opening';
+import type { CreateJobOpeningInput, JobOpeningVisibility } from '@/types/job-opening';
 import { extractErrorMessage } from '@/lib/utils/error';
 
-function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
+function JobOpeningShareLink({ publicCode, visibility }: { publicCode: string; visibility: JobOpeningVisibility }) {
   const [copied, setCopied] = useState(false);
   const shareUrl = buildJobOpeningPublicUrl(publicCode);
+  const isPrivate = visibility === 'PRIVATE';
 
   async function handleCopy() {
     try {
@@ -34,7 +45,7 @@ function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
 
   return (
     <div>
-      <p className="text-sm text-muted mb-2">Link para candidatos</p>
+      <p className="text-sm text-muted mb-2">{isPrivate ? 'Link privado para candidatos' : 'Link para candidatos'}</p>
       <div className="flex items-center gap-2 bg-surface-soft border border-border rounded-xl px-4 py-3">
         <span className="text-xs text-foreground break-all flex-1 text-left">{shareUrl}</span>
         <button
@@ -46,6 +57,12 @@ function JobOpeningShareLink({ publicCode }: { publicCode: string }) {
           {copied ? <Check size={18} /> : <Copy size={18} />}
         </button>
       </div>
+
+      {isPrivate && (
+        <p className="text-xs text-muted mt-2">
+          Esta vaga não aparece na página de vagas do site. Só quem receber este link consegue abrir e se candidatar.
+        </p>
+      )}
     </div>
   );
 }
@@ -95,135 +112,100 @@ export function JobOpeningDrawer({ jobOpeningId, onClose }: JobOpeningDrawerProp
   return (
     <>
       <Drawer isOpen={Boolean(jobOpeningId)} onClose={onClose} title={jobOpening?.title ?? 'Vaga'}>
-        {jobOpeningQuery.isLoading && (
-          <div className="flex justify-center items-center h-40">
-            <Loader2 className="animate-spin text-accent" size={24} />
-          </div>
-        )}
+        <QueryBoundary query={jobOpeningQuery} errorMessage="Não foi possível carregar os detalhes da vaga.">
+          {(jobOpening) => (
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="flex items-center gap-2">
+                  <Badge tone={JOB_OPENING_STATUS_TONES[jobOpening.status]}>{JOB_OPENING_STATUS_LABELS[jobOpening.status]}</Badge>
 
-        {jobOpeningQuery.isError && <p className="text-danger text-sm">Não foi possível carregar os detalhes da vaga.</p>}
+                  <Badge tone={JOB_OPENING_VISIBILITY_TONES[jobOpening.visibility]} className="gap-1.5">
+                    {jobOpening.visibility === 'PRIVATE' ? <Lock size={12} /> : <Globe size={12} />}
+                    {JOB_OPENING_VISIBILITY_LABELS[jobOpening.visibility]}
+                  </Badge>
+                </span>
 
-        {jobOpening && (
-          <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between">
-              <Badge tone={JOB_OPENING_STATUS_TONES[jobOpening.status]}>{JOB_OPENING_STATUS_LABELS[jobOpening.status]}</Badge>
-              <span className="text-xs text-muted">Criada em {formatDate(jobOpening.createdAt)}</span>
-            </div>
-
-            <button
-              onClick={() => setIsEditOpen(true)}
-              className="flex items-center justify-center gap-2 text-sm text-accent border border-accent/30 rounded-full py-2 hover:bg-accent/5 transition"
-            >
-              <Pencil size={16} />
-              Editar vaga
-            </button>
-
-            <JobOpeningShareLink publicCode={jobOpening.publicCode} />
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted">Modelo</p>
-                <p className="text-foreground font-medium">{WORK_MODEL_LABELS[jobOpening.workModel]}</p>
+                <span className="text-xs text-muted">Criada em {formatDate(jobOpening.createdAt)}</span>
               </div>
 
-              <div>
-                <p className="text-muted">Contrato</p>
-                <p className="text-foreground font-medium">{CONTRACT_TYPE_LABELS[jobOpening.contractType]}</p>
+              <button
+                onClick={() => setIsEditOpen(true)}
+                className="flex items-center justify-center gap-2 text-sm text-accent border border-accent/30 rounded-full py-2 hover:bg-accent/5 transition"
+              >
+                <Pencil size={16} />
+                Editar vaga
+              </button>
+
+              <JobOpeningShareLink publicCode={jobOpening.publicCode} visibility={jobOpening.visibility} />
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <DetailField label="Modelo">{WORK_MODEL_LABELS[jobOpening.workModel]}</DetailField>
+
+                <DetailField label="Contrato">{CONTRACT_TYPE_LABELS[jobOpening.contractType]}</DetailField>
+
+                {jobOpening.salaryRange && (
+                  <DetailField label="Faixa salarial" className="col-span-2">
+                    {jobOpening.salaryRange}
+                  </DetailField>
+                )}
               </div>
 
-              {jobOpening.salaryRange && (
-                <div className="col-span-2">
-                  <p className="text-muted">Faixa salarial</p>
-                  <p className="text-foreground font-medium">{jobOpening.salaryRange}</p>
-                </div>
-              )}
-            </div>
+              <BadgeGroup label="Requisitos principais" items={jobOpening.requirements} tone="accent" />
 
-            {jobOpening.requirements.length > 0 && (
+              <BadgeGroup label="Diferenciais" items={jobOpening.differentials} tone="neutral" />
+
+              <BadgeGroup label="Benefícios" items={jobOpening.benefits} tone="success" />
+
               <div>
-                <p className="text-sm text-muted mb-2">Requisitos principais</p>
-                <div className="flex flex-wrap gap-2">
-                  {jobOpening.requirements.map((requirement) => (
-                    <Badge key={requirement} tone="accent">
-                      {requirement}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+                <p className="text-sm text-muted mb-2">
+                  {jobOpening.selectionProcesses.length} processo
+                  {jobOpening.selectionProcesses.length === 1 ? '' : 's'} seletivo
+                  {jobOpening.selectionProcesses.length === 1 ? '' : 's'} vinculado
+                  {jobOpening.selectionProcesses.length === 1 ? '' : 's'}
+                </p>
 
-            {jobOpening.differentials.length > 0 && (
-              <div>
-                <p className="text-sm text-muted mb-2">Diferenciais</p>
-                <div className="flex flex-wrap gap-2">
-                  {jobOpening.differentials.map((differential) => (
-                    <Badge key={differential} tone="neutral">
-                      {differential}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {jobOpening.benefits.length > 0 && (
-              <div>
-                <p className="text-sm text-muted mb-2">Benefícios</p>
-                <div className="flex flex-wrap gap-2">
-                  {jobOpening.benefits.map((benefit) => (
-                    <Badge key={benefit} tone="success">
-                      {benefit}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <p className="text-sm text-muted mb-2">
-                {jobOpening.selectionProcesses.length} processo{jobOpening.selectionProcesses.length === 1 ? '' : 's'} seletivo
-                {jobOpening.selectionProcesses.length === 1 ? '' : 's'} vinculado{jobOpening.selectionProcesses.length === 1 ? '' : 's'}
-              </p>
-
-              {jobOpening.selectionProcesses.length === 0 ? (
-                <p className="text-sm text-muted">Nenhum processo seletivo vinculado a esta vaga ainda.</p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {jobOpening.selectionProcesses.map((process) => (
-                    <button
-                      key={process.id}
-                      onClick={() => setSelectedProcessId(process.id)}
-                      className="flex items-center justify-between gap-3 text-left border border-border rounded-xl px-4 py-3 hover:bg-surface-soft transition"
-                    >
-                      <span className="flex items-center gap-3">
-                        <span className="bg-surface-soft text-accent rounded-full p-2 shrink-0">
-                          <Users size={16} />
-                        </span>
-                        <span className="flex flex-col">
-                          <span className="text-sm font-medium text-foreground">{process.name}</span>
-                          <span className="text-xs text-muted">
-                            {process._count.candidates} candidato{process._count.candidates === 1 ? '' : 's'} · {formatDate(process.createdAt)}
+                {jobOpening.selectionProcesses.length === 0 ? (
+                  <p className="text-sm text-muted">Nenhum processo seletivo vinculado a esta vaga ainda.</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {jobOpening.selectionProcesses.map((process) => (
+                      <button
+                        key={process.id}
+                        onClick={() => setSelectedProcessId(process.id)}
+                        className="flex items-center justify-between gap-3 text-left border border-border rounded-xl px-4 py-3 hover:bg-surface-soft transition"
+                      >
+                        <span className="flex items-center gap-3">
+                          <span className="bg-surface-soft text-accent rounded-full p-2 shrink-0">
+                            <Users size={16} />
+                          </span>
+                          <span className="flex flex-col">
+                            <span className="text-sm font-medium text-foreground">{process.name}</span>
+                            <span className="text-xs text-muted">
+                              {process._count.candidates} candidato
+                              {process._count.candidates === 1 ? '' : 's'} · {formatDate(process.createdAt)}
+                            </span>
                           </span>
                         </span>
-                      </span>
 
-                      <Badge tone={SELECTION_PROCESS_STATUS_TONES[process.status]}>{SELECTION_PROCESS_STATUS_LABELS[process.status]}</Badge>
-                    </button>
-                  ))}
-                </div>
+                        <Badge tone={SELECTION_PROCESS_STATUS_TONES[process.status]}>{SELECTION_PROCESS_STATUS_LABELS[process.status]}</Badge>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {isOpenStatus && (
+                <button
+                  onClick={() => setIsCancelConfirmOpen(true)}
+                  className="flex items-center justify-center gap-2 text-sm text-danger border border-danger/30 rounded-full py-2 hover:bg-danger-soft transition mt-2"
+                >
+                  <XCircle size={16} />
+                  Cancelar vaga
+                </button>
               )}
             </div>
-
-            {isOpenStatus && (
-              <button
-                onClick={() => setIsCancelConfirmOpen(true)}
-                className="flex items-center justify-center gap-2 text-sm text-danger border border-danger/30 rounded-full py-2 hover:bg-danger-soft transition mt-2"
-              >
-                <XCircle size={16} />
-                Cancelar vaga
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </QueryBoundary>
       </Drawer>
 
       <SelectionProcessDrawer processId={selectedProcessId} onClose={() => setSelectedProcessId(null)} />

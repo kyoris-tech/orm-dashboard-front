@@ -13,37 +13,53 @@ export interface SegmentedControlProps<T extends string> {
   active: T;
   onChange: (value: T) => void;
   className?: string;
+  compact?: boolean;
+  leading?: React.ReactNode;
+  joinedBelow?: boolean;
 }
 
-export function SegmentedControl<T extends string>({ options, active, onChange, className }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ options, active, onChange, className, compact, leading, joinedBelow }: SegmentedControlProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [sliderStyle, setSliderStyle] = useState({ left: 0, width: 0 });
 
   useEffect(() => {
-    const activeButton = buttonRefs.current[active];
-    const container = containerRef.current;
+    function measure() {
+      const activeButton = buttonRefs.current[active];
+      const container = containerRef.current;
 
-    if (!activeButton || !container) {
-      return;
+      if (!activeButton || !container) {
+        return;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      const buttonRect = activeButton.getBoundingClientRect();
+
+      setSliderStyle({
+        left: buttonRect.left - containerRect.left,
+        width: buttonRect.width,
+      });
     }
 
-    const containerRect = container.getBoundingClientRect();
-    const buttonRect = activeButton.getBoundingClientRect();
+    measure();
 
-    setSliderStyle({
-      left: buttonRect.left - containerRect.left,
-      width: buttonRect.width,
-    });
-  }, [active]);
+    const container = containerRef.current;
+    const observer = new ResizeObserver(measure);
+    const observed = [container, ...Object.values(buttonRefs.current)];
+
+    observed.forEach((element) => element && observer.observe(element));
+    return () => observer.disconnect();
+  }, [active, compact]);
 
   return (
     <div className={cn('flex items-center justify-center', className)}>
-      <div ref={containerRef} className="relative inline-flex items-center bg-surface-soft border-2 border-border rounded-full p-1 gap-2">
+      <div ref={containerRef} data-pill className={cn('relative inline-flex items-center bg-surface-soft border-2 border-border p-1 gap-2', joinedBelow ? 'rounded-[22px] rounded-bl-none' : 'rounded-full')}>
         <div
           className="absolute top-1 bottom-1 rounded-full bg-foreground transition-all duration-300 ease-in-out"
           style={{ left: `${sliderStyle.left}px`, width: `${sliderStyle.width}px` }}
         />
+
+        {leading && <div className="relative z-10">{leading}</div>}
 
         {options.map((option) => {
           const isActive = active === option.key;
@@ -56,7 +72,8 @@ export function SegmentedControl<T extends string>({ options, active, onChange, 
               }}
               onClick={() => onChange(option.key)}
               className={cn(
-                'relative z-10 px-5 py-2 rounded-full md:text-base text-xs font-semibold whitespace-nowrap transition-colors duration-300',
+                'relative z-10 rounded-full font-semibold whitespace-nowrap transition-colors duration-300',
+                compact ? 'px-4 py-1.5 text-sm' : 'px-5 py-2 md:text-base text-xs',
                 isActive ? 'text-white' : 'text-primary',
               )}
             >

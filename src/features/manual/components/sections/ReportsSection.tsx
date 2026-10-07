@@ -6,7 +6,7 @@ export function ReportsSection() {
   return (
     <>
       <p>
-        Em <strong>Relatórios</strong>, no menu, você acompanha o volume e a qualidade do que passou
+        Em <strong>Relatórios</strong> (pelo botão azul do topo ou pelo menu com o seu nome), você acompanha o volume e a qualidade do que passou
         pela Orm.
       </p>
 

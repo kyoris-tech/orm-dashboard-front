@@ -1,19 +1,7 @@
-import { NextResponse } from 'next/server';
-import { backendClient, withBearerToken } from '@/lib/http/backend-client';
-import { forwardAxiosError } from '@/lib/http/forward-error';
-import { requireSessionToken } from '@/lib/auth/require-session';
+import { proxyHandler } from '@/lib/http/proxy-handler';
 
-export async function GET() {
-  const token = await requireSessionToken();
-
-  if (token instanceof NextResponse) {
-    return token;
-  }
-
-  try {
-    const { data } = await backendClient.get('/resumes/recent', withBearerToken(token));
-    return NextResponse.json(data);
-  } catch (error) {
-    return forwardAxiosError(error, 'Não foi possível carregar os currículos recentes.');
-  }
-}
+export const GET = proxyHandler({
+  method: 'get',
+  path: '/resumes/recent',
+  errorMessage: 'Não foi possível carregar os currículos recentes.',
+});

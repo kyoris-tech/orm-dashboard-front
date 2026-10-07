@@ -112,7 +112,7 @@ Nesta ordem são ~15 minutos, e dão o modelo mental inteiro:
 1. `src/app/layout.tsx` — shell da aplicação (fonte, Header, Footer, providers)
 2. `src/proxy.ts` — quem entra e quem é redirecionado para `/login`
 3. `src/app/(protected)/home/home-view.tsx` — a tela principal do produto
-4. `src/app/api/admin/users/route.ts` — um Route Handler BFF típico, curto
+4. `src/lib/http/proxy-handler.ts` e `src/app/api/admin/users/route.ts` — o BFF inteiro cabe nessas duas leituras
 5. `src/features/admin/users/` — uma feature inteira, pequena o bastante para ler de ponta a ponta
 
 ---
@@ -169,7 +169,7 @@ código.
 Esta é a regra que mais gera trabalho e mais economiza depois.
 
 **Antes de escrever qualquer JSX, procure se já existe.** `src/components/ui/`
-tem 25 componentes. Um `<button>` cru dentro de uma feature quase sempre é um
+tem 32 componentes. Um `<button>` cru dentro de uma feature quase sempre é um
 `Button`, `SecondaryButton` ou `IconButton` que não foi procurado.
 
 **Se você duplicar um bloco pela segunda vez, extraia na hora.** Não espere a
@@ -358,38 +358,47 @@ para `/login`.
 
 ### Formato de um Route Handler
 
-Todos seguem esta forma. Ao criar um novo, copie de
+Quase todo Route Handler é só uma declaração. `src/lib/http/proxy-handler.ts`
+concentra o que antes se repetia em cada arquivo (checar sessão, repassar
+query/body, encaminhar o erro do Nest). Ao criar um novo, copie de
 `src/app/api/admin/users/route.ts`:
 
 ```ts
-export async function GET(request: Request) {
-  const token = await requireSessionToken();
+import { proxyHandler } from '@/lib/http/proxy-handler';
 
-  if (token instanceof NextResponse) {
-    return token;
-  }
+export const GET = proxyHandler({
+  method: 'get',
+  path: '/users',
+  errorMessage: 'Não foi possível carregar os usuários.',
+  query: true,
+});
 
-  const { searchParams } = new URL(request.url);
-
-  try {
-    const { data } = await backendClient.get('/users', {
-      ...withBearerToken(token),
-      params: Object.fromEntries(searchParams),
-    });
-    return NextResponse.json(data);
-  } catch (error) {
-    return forwardAxiosError(error, 'Não foi possível carregar os usuários.');
-  }
-}
+export const PATCH = proxyHandler({
+  method: 'patch',
+  path: ({ id }) => `/users/${id}/status`,
+  errorMessage: 'Não foi possível atualizar o status do usuário.',
+  body: true,
+});
 ```
 
-Três peças obrigatórias:
+Opções de `proxyHandler`:
 
-- `requireSessionToken()` — devolve o token **ou** um `NextResponse` 401. O
-  `instanceof` não é opcional.
-- `Object.fromEntries(searchParams)` — sem isso a paginação e os filtros são
-  silenciosamente descartados (seção 15).
-- `forwardAxiosError(error, ...)` — preserva o status e a mensagem do Nest.
+- `path` — string, ou função dos parâmetros da rota (`[id]`, `[code]`...).
+- `query: true` — repassa a query string. **Sem isso a paginação e os filtros
+  são silenciosamente descartados** (seção 15); toda listagem precisa dele.
+- `body: true` — repassa o JSON do corpo.
+- `public: true` — dispensa sessão (só para o que fica sob `public/`).
+- `respond` — transforma o dado antes de responder (o `DELETE` de plano devolve
+  `{ id }`).
+
+A sessão é validada sempre (401 com `Sessão expirada`) e o erro do backend volta
+com o mesmo status e a mesma mensagem; `errorMessage` é só o fallback.
+
+Quando a rota precisa de lógica própria, use `authenticatedRoute(errorMessage,
+({ token, request, params }) => ...)` do mesmo arquivo: ele faz a sessão e o
+`try/catch`, e você devolve um `NextResponse` (exemplo:
+`src/lib/resumes/company-resumes-route.ts`). Só ficam fora do padrão as rotas de
+autenticação, o upload multipart e o PDF, que manipulam a resposta bruta.
 
 ### Cache
 
@@ -514,7 +523,10 @@ Antes de criar qualquer coisa, veja se está aqui.
 | `Select` | select estilizado, recebe `SelectOption[]` |
 | `Checkbox`, `Radio` | inputs de escolha |
 | `SegmentedControl` | alternador de abas, genérico em `<T extends string>` |
-| `Modal` | **base de todo dialog** — portal, overlay, animação, `size` |
+| `Modal` | **base de todo dialog** — portal, overlay, animação, `size`; com `onClose` ganha X, clique fora e Esc; `footer` fixa os botões |
+| `ModalActions` | par Cancelar/Salvar do rodapé de um formulário; liga o submit ao `<form>` por `formId` |
+| `DiscardChangesDialog` | confirmação "Descartar alterações?"; use via `useDiscardGuard`, não direto |
+| `FieldError` | mensagem de erro de campo; `Input`, `PasswordInput`, `Select`, `CnpjInput` e `CurrencyInput` já a exibem pela prop `error` |
 | `ConfirmDialog` | confirmação sim/não com `tone` |
 | `Drawer` | painel lateral de detalhes |
 | `ModalPortal` | portal cru; use `Modal`, não este |
@@ -522,6 +534,10 @@ Antes de criar qualquer coisa, veja se está aqui.
 | `Pagination` | navegação de páginas + seletor de itens por página |
 | `Card`, `StatCard` | contêineres |
 | `Badge` | pílula de status, com `tone` |
+| `BadgeGroup` | rótulo + lista de `Badge` (requisitos, benefícios); some se a lista é vazia |
+| `DetailField` | par rótulo/valor dos drawers e páginas de detalhe |
+| `Spinner` | indicador de carregamento centralizado; o tamanho da área vem de `className` |
+| `QueryBoundary` | carregando/erro/dados de uma `useQuery`; os filhos recebem o dado já garantido |
 | `Text` | tipografia |
 | `Toast` | aviso temporário, com ação opcional (usado no "desfazer") |
 | `OrmLogo` | logo |
@@ -598,8 +614,8 @@ registros. Esses lugares pedem explicitamente:
 const companiesQuery = useCompaniesQuery({ pageSize: ALL_ITEMS_PAGE_SIZE });
 ```
 
-Hoje usam isso: `JobOpeningPicker`, `CreateUserDialog`, `CreateCompanyDialog`,
-`EditCompanyDialog`, `UsersView`, `AdminMetricsView` e
+Hoje usam isso: `JobOpeningPicker`, `CreateUserDialog`, `CompanyFormDialog`,
+`UsersView`, `AdminMetricsView` e
 `use-recruitment-metrics-query`. **Se você criar um novo select alimentado por
 uma lista paginada, ele precisa disto** — senão trunca em silêncio.
 
@@ -742,6 +758,49 @@ Nunca reimplemente o `isAxiosError` — a divergência entre cópias já acontec
 janela de desfazer: exclui, guarda o id por 6s, oferece `Toast` com ação de
 restaurar. Reaproveite se precisar do mesmo comportamento em outro recurso.
 
+### Formulários: Zod, aviso de descarte e rodapé fixo
+
+Todo formulário segue o mesmo desenho. Quem escreve um novo deve copiar o
+`CompanyFormDialog` (criar/editar) ou o `CreateUserDialog` (só criar).
+
+**1. Schema Zod por feature** — `features/<feature>/schemas.ts`, com as mensagens
+em português (é o que o usuário lê). Os blocos reutilizáveis ficam em
+`src/lib/validation/fields.ts` (`requiredText`, `emailField`, `requiredId`...).
+
+```ts
+export const changePasswordSchema = z.object({
+  password: z.string().refine((value) => value.trim().length >= 6, 'A senha deve ter pelo menos 6 caracteres.'),
+});
+```
+
+O schema valida o **estado bruto do formulário** (textos, como `billingDayText`),
+e o `submit()` devolve o dado já limpo (`trim`) — monte o payload a partir dele,
+não do estado. Conversões (texto → número, vazio → `null`) ficam no handler.
+
+**2. `useFormValidation(schema, values)`** (`src/lib/validation/`):
+
+- `validation.field('name')` devolve `{ error, onBlur }` — espalhe no campo:
+  `<Input {...validation.field('name')} />`. O erro só aparece depois que o
+  usuário sai do campo ou tenta enviar.
+- `validation.submit()` marca o envio e devolve o dado validado ou `null`.
+- `validation.reset()` — chame no bloco que reseta o formulário ao abrir.
+- O formulário usa `noValidate`: a mensagem é a do Zod, não a do navegador. O botão
+  de salvar **não** fica desabilitado; clicar nele mostra o que falta.
+
+**3. Aviso de descarte** — `useDiscardGuard(isDirty, onCancel)` devolve
+`{ requestClose, discardDialog }`. Passe `requestClose` ao `onClose` do `Modal` e
+ao Cancelar (X, clique fora, Esc e Cancelar caem todos nele) e renderize
+`{discardDialog}` ao lado do `Modal`. `isDirty` compara com o valor **de quando o
+modal abriu** (guarde um `baseline` no mesmo bloco que reseta o formulário), nunca
+com a prop viva, senão um refetch gera aviso falso.
+
+**4. Rodapé fixo** — passe `footer={<ModalActions formId={formId} ... />}` ao
+`Modal` e `id={formId}` ao `<form>` (`useId()`); os botões ficam fora da área que
+rola e continuam enviando o formulário.
+
+O Esc fecha só o modal do topo (`useEscapeToClose` mantém uma pilha), então um
+aviso de descarte aberto sobre um formulário fecha primeiro.
+
 ---
 
 ## 12. Mapa de rotas
@@ -777,7 +836,7 @@ Vagas) são estado local em `home-view.tsx`.
 | `public/` | `job-openings`, `job-openings/[code]`, `job-openings/[code]/apply` — **sem sessão** |
 | `admin/` | `companies` (+ `[id]`, `[id]/plan`, `[id]/status`, `[id]/regenerate-token`), `users` (+ `[id]/status`, `[id]/password`, `export`), `plans` (+ `[id]`), `audit-logs` |
 
-Os handlers sob `public/` são os únicos que não chamam `requireSessionToken()`.
+Os handlers sob `public/` são os únicos que usam `public: true` e dispensam a sessão.
 
 ---
 
@@ -787,13 +846,13 @@ Os handlers sob `public/` são os únicos que não chamam `requireSessionToken()
 |---|---|---|
 | `auth` | login e logout | `components/LoginForm.tsx` |
 | `resumes` | upload em lote, importações recentes, busca e filtros de candidatos, modal do currículo | `components/AnalyzeSection.tsx` |
-| `job-openings` | CRUD de vagas, drawer de detalhes, link público, picker reutilizável | `components/JobOpeningsView.tsx` |
+| `job-openings` | CRUD de vagas, visibilidade pública/privada, drawer de detalhes, link público, picker reutilizável | `components/JobOpeningsView.tsx` |
 | `selection-processes` | ciclo de vida do processo, candidatos, vínculo com vaga, conclusão | `components/SelectionProcessesTable.tsx` |
 | `metrics` | relatórios do recrutador (volume, conversão, tempo até contratação) | `components/MetricsView.tsx` |
 | `plan` | plano da empresa, uso e bloqueio de features | `components/PlanFeatureGate.tsx` |
 | `manual` | manual do usuário, com seções filtradas por papel | `components/ManualView.tsx`, registro em `sections.ts` |
 | `marketing` | landing pública | `components/LandingView.tsx`, textos em `content.ts` |
-| `public-job-opening` | vagas públicas e candidatura sem conta | `components/PublicJobOpeningView.tsx` |
+| `public-job-opening` | vagas públicas e candidatura sem conta — a listagem traz só vagas `PUBLIC`, a página de código abre qualquer vaga | `components/PublicJobOpeningView.tsx` |
 | `admin/companies` | empresas, plano, status, token de API | `components/CompaniesView.tsx` |
 | `admin/users` | usuários, senha, bloqueio, exportação LGPD | `components/UsersView.tsx` |
 | `admin/plans` | CRUD de planos | `components/PlansView.tsx` |
@@ -833,8 +892,8 @@ Notas úteis:
 
 ### 14.3 Novo endpoint
 
-1. `src/app/api/<recurso>/route.ts`, copiando o formato da seção 6 — inclusive o
-   repasse de `searchParams`.
+1. `src/app/api/<recurso>/route.ts` com `proxyHandler` (seção 6). Em listagens,
+   `query: true` é obrigatório.
 2. Função em `features/<feature>/api.ts` usando `httpClient`.
 3. Tipos de request/response em `src/types/`.
 4. Chave em `src/lib/query/keys.ts`.
@@ -904,6 +963,26 @@ então qualquer coisa em `public/` fica atrás da sessão — é o que mantém o
 manual (`public/manual/*.png`) fora do alcance de quem não está logado. A exceção é
 `_next/image`, que está na lista de exclusão: usar `next/image` nesses arquivos os
 tornaria acessíveis sem sessão. Por isso `ManualFigure` usa `<img>` direto.
+
+**Vaga privada vaza por SEO, não pela listagem.** `visibility: 'PRIVATE'` é
+filtrado no backend (`findAllPublicOpen`), então a vitrine e o `sitemap.ts` já
+saem corretos de graça. O que não é automático é o `generateMetadata` de
+`/vagas/[codigo]`: a página de uma vaga privada precisa de
+`robots: { index: false, follow: false }` e sem `canonical`, senão o link cai no
+índice do Google e a vaga deixa de ser privada na prática. Qualquer novo lugar
+que liste vagas publicamente tem de repetir o filtro.
+
+**A pílula de seções mora no `Header`, não na página.** `/home` e `/admin` não
+renderizam o toggle: o `Header` o exibe entre o logo e o perfil (abaixo de `xl`
+ele desce para uma segunda linha). A seção ativa vive na URL (`?aba=`), lida por
+`useSectionParam` (`lib/hooks/use-section-param.ts`) tanto pelo toggle quanto
+pela view. Para uma nova seção, edite só `OPTIONS` em `ImportToggle.tsx` ou
+`AdminToggle.tsx` e renderize o conteúdo na view; não crie `useState` local para
+isso. O primeiro item da pílula é um botão azul (borda esquerda arredondada, direita reta) com o nome da página atual (prop
+`leading` do `SegmentedControl`); ao clicar abre a lista de páginas, a mesma do
+menu do perfil, com a atual destacada. O dropdown é renderizado em portal no
+`body` porque o contêiner da pílula tem `overflow-x-auto` e cortaria o menu.
+Páginas sem pílula (`/metrics`, `/manual`) mostram só o botão.
 
 ### Avisos de lint esperados
 

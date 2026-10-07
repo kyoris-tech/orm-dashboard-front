@@ -1,9 +1,10 @@
 'use client';
 
-import { Loader2, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useMyPlanQuery } from '../hooks/use-my-plan-query';
 import { FEATURE_LABELS } from '../labels';
 import type { PlanFeature } from '@/types/company';
+import { Spinner } from '@/components/ui/Spinner';
 
 export interface PlanFeatureGateProps {
   feature: PlanFeature;
@@ -15,9 +16,7 @@ export function PlanFeatureGate({ feature, children }: PlanFeatureGateProps) {
 
   if (planQuery.isLoading) {
     return (
-      <div className="flex justify-center items-center h-40">
-        <Loader2 className="animate-spin text-accent" size={24} />
-      </div>
+      <Spinner className="h-40" />
     );
   }
 

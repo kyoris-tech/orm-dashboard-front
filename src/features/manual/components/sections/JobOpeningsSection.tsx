@@ -1,13 +1,15 @@
 import { ManualFigure } from '../ManualFigure';
 import { ManualSteps, ManualStep } from '../ManualSteps';
 import { ManualCallout } from '../ManualCallout';
+import { ManualTable } from '../ManualTable';
 
 export function JobOpeningsSection() {
   return (
     <>
       <p>
-        Publicar uma vaga gera um <strong>link público</strong>. Quem recebe o link vê a descrição e
-        envia o currículo direto — sem criar conta, sem senha.
+        Publicar uma vaga gera um <strong>link</strong>. Quem recebe o link vê a descrição e envia o
+        currículo direto — sem criar conta, sem senha. Você decide se a vaga também aparece na
+        vitrine pública de vagas ou se fica acessível apenas por esse link.
       </p>
 
       <ManualFigure
@@ -35,6 +37,9 @@ export function JobOpeningsSection() {
               <strong>Tipo de contrato</strong> — CLT, PJ, Estágio ou Temporário
             </li>
             <li>
+              <strong>Quem pode ver esta vaga</strong> — Pública ou Privada (veja abaixo)
+            </li>
+            <li>
               <strong>Faixa salarial</strong> (opcional)
             </li>
             <li>
@@ -55,6 +60,43 @@ export function JobOpeningsSection() {
         </p>
       </ManualCallout>
 
+      <h3>Pública ou privada</h3>
+
+      <p>
+        Ao criar ou editar a vaga, escolha em <strong>Quem pode ver esta vaga</strong>:
+      </p>
+
+      <ManualTable
+        headers={['', 'Pública', 'Privada']}
+        rows={[
+          ['Link direto funciona', 'Sim', 'Sim'],
+          ['Aparece na vitrine de vagas do site', 'Sim', 'Não'],
+          ['Pode ser encontrada no Google', 'Sim', 'Não'],
+          ['Quem pode se candidatar', 'Qualquer pessoa', 'Só quem recebeu o link'],
+        ]}
+      />
+
+      <p>
+        Use <strong>privada</strong> quando quiser poucos currículos e escolhidos: uma indicação, uma
+        recolocação interna, um teste com um grupo pequeno. Use <strong>pública</strong> quando
+        quiser o máximo de alcance.
+      </p>
+
+      <ManualCallout tone="warning" title="Privada não é protegida por senha">
+        <p>
+          A vaga privada fica fora da vitrine e fora das buscas, mas qualquer pessoa com o link
+          consegue abrir e se candidatar. Se o link for repassado, não há como impedir o envio —
+          nesse caso, cancele a vaga e crie outra.
+        </p>
+      </ManualCallout>
+
+      <p>
+        A visibilidade aparece na coluna <strong>Visibilidade</strong> da lista de vagas e pode ser
+        trocada a qualquer momento em <strong>Editar vaga</strong>. Ao tornar uma vaga pública, ela
+        entra na vitrine; ao torná-la privada, sai da vitrine na hora, mas o link continua valendo
+        para quem já tem.
+      </p>
+
       <h3>Divulgar</h3>
 
       <p>
@@ -71,8 +113,8 @@ export function JobOpeningsSection() {
       <h3>A vitrine de vagas</h3>
 
       <p>
-        Todas as vagas abertas também aparecem juntas numa página pública de vagas, que funciona como
-        uma vitrine geral.
+        As vagas abertas marcadas como <strong>públicas</strong> aparecem juntas numa página pública
+        de vagas, que funciona como uma vitrine geral. Vagas privadas não entram nessa lista.
       </p>
 
       <ManualFigure

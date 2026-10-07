@@ -1,13 +1,9 @@
 'use client';
 
 import { SegmentedControl, type SegmentedControlOption } from '@/components/ui/SegmentedControl';
+import { useSectionParam } from '@/lib/hooks/use-section-param';
 
 export type AdminSection = 'companies' | 'users' | 'metrics' | 'audit' | 'plans';
-
-export interface AdminToggleProps {
-  active: AdminSection;
-  onChange: (value: AdminSection) => void;
-}
 
 const OPTIONS: readonly SegmentedControlOption<AdminSection>[] = [
   { key: 'companies', label: 'Empresas' },
@@ -17,6 +13,14 @@ const OPTIONS: readonly SegmentedControlOption<AdminSection>[] = [
   { key: 'plans', label: 'Planos' },
 ];
 
-export function AdminToggle({ active, onChange }: AdminToggleProps) {
-  return <SegmentedControl options={OPTIONS} active={active} onChange={onChange} />;
+const SECTION_KEYS = OPTIONS.map((option) => option.key);
+
+export function useAdminSection() {
+  return useSectionParam<AdminSection>(SECTION_KEYS, 'companies');
+}
+
+export function AdminToggle({ leading, joinedBelow }: { leading?: React.ReactNode; joinedBelow?: boolean }) {
+  const [section, setSection] = useAdminSection();
+
+  return <SegmentedControl options={OPTIONS} active={section} onChange={setSection} compact leading={leading} joinedBelow={joinedBelow} />;
 }

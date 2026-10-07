@@ -1,13 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Select } from '@/components/ui/Select';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { CONTRACT_TYPE_OPTIONS } from '@/features/job-openings/labels';
 import { usePublicJobOpeningsQuery } from '../hooks/use-public-job-openings-query';
 import { PublicJobOpeningCard } from './PublicJobOpeningCard';
+import { Spinner } from '@/components/ui/Spinner';
 
 const ALL_CONTRACT_TYPES_VALUE = '';
 
@@ -76,9 +76,7 @@ export function PublicJobOpeningsListView() {
       </div>
 
       {jobOpeningsQuery.isLoading && (
-        <div className="flex items-center justify-center w-full py-16">
-          <Loader2 className="animate-spin text-accent" size={28} />
-        </div>
+        <Spinner size={28} className="w-full py-16" />
       )}
 
       {jobOpeningsQuery.isError && <p className="text-danger text-sm text-center py-16">Não foi possível carregar as vagas.</p>}

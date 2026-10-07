@@ -7,8 +7,8 @@ export function AdminSection() {
   return (
     <>
       <p>
-        Área visível apenas para <strong>administradores</strong>, acessível pelo menu. Tem cinco
-        abas.
+        Área visível apenas para <strong>administradores</strong>, acessível pelo botão de página ou
+        pelo menu com o seu nome. Tem cinco abas, que aparecem no topo, ao lado do botão azul.
       </p>
 
       <ManualFigure

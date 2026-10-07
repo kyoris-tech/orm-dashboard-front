@@ -54,18 +54,34 @@ export function AccessSection({ isAdmin }: ManualContentProps) {
         </p>
       </ManualCallout>
 
-      <h3>O menu</h3>
+      <h3>Como se movimentar</h3>
 
-      <p>
-        Clique no seu nome, no canto superior direito, para abrir o menu. Ali ficam{' '}
-        <strong>Início</strong>, <strong>Relatórios</strong>, <strong>Manual</strong>
-        {isAdmin ? (
-          <>
-            , <strong>Administração</strong>
-          </>
-        ) : null}{' '}
-        e a opção de <strong>Sair</strong>.
-      </p>
+      <p>O topo da tela tem dois menus, e os dois levam às mesmas páginas:</p>
+
+      <ManualFigure
+        src="/manual/11-menu-paginas.png"
+        alt="Botão azul com o nome da página aberto, mostrando a lista de páginas"
+        caption="O botão azul abre a lista de páginas, com a atual destacada"
+      />
+
+      <ul>
+        <li>
+          <strong>O botão azul com o nome da página</strong>, no lado esquerdo do topo (começa em{' '}
+          <strong>Início</strong>). Ele mostra em qual página você está. Ao clicar, desce uma lista com{' '}
+          <strong>Início</strong>, <strong>Relatórios</strong>, <strong>Manual</strong>
+          {isAdmin ? (
+            <>
+              {' '}
+              e <strong>Administração</strong>
+            </>
+          ) : null}
+          , com a página atual destacada.
+        </li>
+        <li>
+          <strong>O seu nome</strong>, no canto superior direito. Abre a mesma lista, mais o seu
+          e-mail e a opção de <strong>Sair</strong>.
+        </li>
+      </ul>
 
       <ManualCallout title="Dica">
         <p>Sempre use Sair ao terminar, principalmente em computador compartilhado.</p>

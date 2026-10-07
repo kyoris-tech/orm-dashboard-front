@@ -76,7 +76,7 @@ export function UsersView() {
   }
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-0">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted whitespace-nowrap">Empresa</span>

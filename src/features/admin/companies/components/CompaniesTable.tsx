@@ -15,7 +15,7 @@ import { useCompaniesQuery } from '../hooks/use-companies-query';
 import { useUpdateCompanyDetailsMutation } from '../hooks/use-update-company-details-mutation';
 import { useUpdateCompanyStatusMutation } from '../hooks/use-update-company-status-mutation';
 import { useRegenerateCompanyTokenMutation } from '../hooks/use-regenerate-company-token-mutation';
-import { EditCompanyDialog } from './EditCompanyDialog';
+import { CompanyFormDialog } from './CompanyFormDialog';
 import { NewTokenDialog } from './NewTokenDialog';
 import type { CompanySummary, CompanyStatus, UpdateCompanyInput } from '@/types/company';
 import { extractErrorMessage } from '@/lib/utils/error';
@@ -235,7 +235,8 @@ export function CompaniesTable() {
         />
       )}
 
-      <EditCompanyDialog
+      <CompanyFormDialog
+        mode="edit"
         isOpen={Boolean(editingCompany)}
         company={editingCompany}
         isSubmitting={updateDetailsMutation.isPending}
