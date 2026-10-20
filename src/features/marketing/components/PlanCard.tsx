@@ -2,14 +2,22 @@ import { CheckCircle, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { buildWhatsappLink } from '@/lib/utils/whatsapp';
 import { FEATURE_LABELS } from '@/features/plan/labels';
-import { ALL_PLAN_FEATURES, type PlanCopy } from '../content';
+import { ALL_PLAN_FEATURES, ANNUAL_BILLED_MONTHS, type PlanCopy } from '../content';
+
+export type PlanBilling = 'monthly' | 'annual';
+
+const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
 export interface PlanCardProps {
   plan: PlanCopy;
+  billing?: PlanBilling;
 }
 
-export function PlanCard({ plan }: PlanCardProps) {
-  const whatsappLink = buildWhatsappLink(`Olá! Tenho interesse no plano ${plan.name} da Orm Intelligence.`);
+export function PlanCard({ plan, billing = 'monthly' }: PlanCardProps) {
+  const isAnnual = billing === 'annual' && plan.monthlyPrice !== undefined;
+  const annualTotal = (plan.monthlyPrice ?? 0) * ANNUAL_BILLED_MONTHS;
+  const priceLabel = isAnnual ? brl.format(annualTotal / 12).replace(/\s/g, ' ') : plan.priceLabel;
+  const whatsappLink = buildWhatsappLink(`Olá! Tenho interesse no plano ${plan.name}${isAnnual ? ' (cobrança anual)' : ''} da Orm Intelligence.`);
 
   return (
     <div
@@ -25,10 +33,13 @@ export function PlanCard({ plan }: PlanCardProps) {
 
       <p className="text-sm text-white/60 leading-relaxed min-h-[4.5rem]">{plan.tagline}</p>
 
-      <p className="flex items-baseline justify-center gap-1">
-        <span className="text-3xl font-bold text-white">{plan.priceLabel}</span>
-        {plan.pricePeriodLabel && <span className="text-sm text-white/50">{plan.pricePeriodLabel}</span>}
-      </p>
+      <div className="flex flex-col items-center gap-1">
+        <p className="flex items-baseline justify-center gap-1">
+          <span className="text-3xl font-bold text-white">{priceLabel}</span>
+          {plan.pricePeriodLabel && <span className="text-sm text-white/50">{plan.pricePeriodLabel}</span>}
+        </p>
+        <p className="h-4 text-xs text-white/50">{isAnnual ? `${brl.format(annualTotal)} cobrados por ano` : ''}</p>
+      </div>
 
       <div className="flex flex-col gap-1 rounded-2xl bg-white/5 py-5">
         <p className="font-semibold text-white">{plan.maxUsersLabel}</p>
