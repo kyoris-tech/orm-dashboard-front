@@ -42,6 +42,8 @@ export interface PlanCopy {
   tagline: string;
   priceLabel: string;
   pricePeriodLabel?: string;
+  /** Valor mensal em reais; habilita a cobrança anual. Ausente em planos sob consulta. */
+  monthlyPrice?: number;
   maxUsersLabel: string;
   maxResumesLabel: string;
   overageLabel: string;
@@ -50,11 +52,15 @@ export interface PlanCopy {
   highlighted?: boolean;
 }
 
+/** Na cobrança anual o cliente paga 10 meses e usa 12 (2 meses grátis). */
+export const ANNUAL_BILLED_MONTHS = 10;
+
 export const PLAN_COPY: readonly PlanCopy[] = [
   {
     name: 'Essencial',
     tagline: 'Para consultorias pequenas e RH de uma pessoa começarem a organizar as contratações.',
     priceLabel: 'R$ 197',
+    monthlyPrice: 197,
     pricePeriodLabel: '/mês',
     maxUsersLabel: 'Até 3 usuários',
     maxResumesLabel: '100 currículos inclusos por mês',
@@ -66,6 +72,7 @@ export const PLAN_COPY: readonly PlanCopy[] = [
     name: 'Profissional',
     tagline: 'Para empresas que já publicam vagas e tocam processos seletivos completos.',
     priceLabel: 'R$ 597',
+    monthlyPrice: 597,
     pricePeriodLabel: '/mês',
     maxUsersLabel: 'Até 15 usuários',
     maxResumesLabel: '600 currículos inclusos por mês',
@@ -78,6 +85,7 @@ export const PLAN_COPY: readonly PlanCopy[] = [
     name: 'Business',
     tagline: 'Para operações com contratação contínua e time sem limite de usuários.',
     priceLabel: 'R$ 1.497',
+    monthlyPrice: 1497,
     pricePeriodLabel: '/mês',
     maxUsersLabel: 'Usuários ilimitados',
     maxResumesLabel: '2.000 currículos inclusos por mês',
